@@ -1,0 +1,35 @@
+@import "/static/reset.css";
+
+@font-face {
+	font-family: "CCWSUI";
+	src: url("/static/font.ttf");
+}
+
+:root {
+	--font-scale: 3;
+
+	font-family: CCWSUI, sans-serif;
+	font-size: calc(12px * var(--font-scale));
+	line-height: calc(9px * var(--font-scale));
+	--px: calc(1px * var(--font-scale));
+
+	color: white;
+
+	background-image: url("/static/background.png");
+	background-size: calc(var(--px) * 8);
+}
+
+.node {
+	margin: calc(var(--px) * 2);
+	padding: calc(var(--px) * 2);
+
+	background-image: url("/static/background.png");
+	background-size: calc(var(--px) * 8);
+
+	border: calc(var(--px) * 2) solid;
+	border-image-source: url("/static/border.png");
+	border-image-slice: 2;
+	border-image-repeat: round;
+
+	width: fit-content;
+}
