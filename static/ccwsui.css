@@ -20,15 +20,15 @@
 }
 
 .node {
-	margin: calc(var(--px) * 2);
-	padding: calc(var(--px) * 2);
-
+	border-top: calc(var(--px) * 2) solid transparent;
+	border-left: calc(var(--px) * 2) solid transparent;
+	border-right: calc(var(--px) * 2) solid transparent;
+	border-bottom: calc(var(--px) * 2) solid transparent;
 	background-image: url("/static/background.png");
 	background-size: calc(var(--px) * 8);
 
-	border: calc(var(--px) * 2) solid;
 	border-image-source: url("/static/border.png");
-	border-image-slice: 2;
+	border-image-slice: 2 2 2 2;
 	border-image-repeat: round;
 
 	width: fit-content;

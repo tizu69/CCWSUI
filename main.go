@@ -3,6 +3,7 @@ package main
 import (
 	"log/slog"
 	"os"
+	"sync"
 
 	"github.com/Marlliton/slogpretty"
 	"github.com/joho/godotenv"
@@ -10,6 +11,9 @@ import (
 
 type CCWSUI struct {
 	addr string
+
+	rooms   map[string]*Room
+	roomsmu sync.RWMutex
 }
 
 func main() {
@@ -26,7 +30,14 @@ func main() {
 	}
 
 	app := CCWSUI{
-		addr: addr,
+		addr:  addr,
+		rooms: getCoreRooms(),
 	}
 	app.Run()
+}
+
+func (app *CCWSUI) room(id string) *Room {
+	app.roomsmu.RLock()
+	defer app.roomsmu.RUnlock()
+	return app.rooms[id]
 }
