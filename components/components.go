@@ -15,9 +15,10 @@ func Root(roomid string, title string, root Native) Node {
 		Title:    title,
 		Language: "en",
 		Head: []Node{
-			Link(Rel("stylesheet"), Href("/static/ccwsui.css")),
 			Script(Src("/static/htmx.min.js")),
 			Script(Src("/static/hx-ws.js")),
+			Link(Rel("stylesheet"), Href("/static/ccwsui.css")),
+			Script(Src("/static/ccwsui.js"), Defer()),
 		},
 		Body: []Node{
 			Div(Attr("hx-ws:connect", wsurl), root.Render()),

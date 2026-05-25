@@ -43,5 +43,14 @@ func getCoreRooms() map[string]*Room {
 func getCoreRoomHome() *Room {
 	return NewRoom("CCWSUI!",
 		components.Padded(8, 8, 8, 8,
-			components.LiteralOf("Hey there!")))
+			components.Textured("background-stock", "border-stock", 20, 21, 17, 21,
+				components.VStacked(
+					components.Padded(3, 20, 3, 20,
+						components.LiteralOf("Stock Keeper").
+							WithColor("#000000").WithWrap(components.NoWrap),
+					),
+					components.LiteralOf("awawawawawawawa"),
+				).WithAlign(components.StackAlignCenter),
+			).WithRepeat(components.BorderRepeatStretch).
+				WithPadBorder(false)))
 }
