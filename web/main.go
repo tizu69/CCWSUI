@@ -1,0 +1,176 @@
+//go:build wasm && js
+
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"log/slog"
+	"os"
+	"strconv"
+	"strings"
+	"syscall/js"
+
+	"g.tizu.dev/CCWSUI/components"
+	"g.tizu.dev/CCWSUI/web/webmsg"
+	"github.com/Marlliton/slogpretty"
+	"github.com/coder/websocket"
+)
+
+type jsapi struct {
+	wrap     js.Value
+	Root     components.Native
+	DevTools bool
+}
+
+func NewJSAPI() *jsapi {
+	j := &jsapi{wrap: js.Global().Get("ccwsui")}
+
+	j.wrap.Set("totalRerender", js.FuncOf(j.totalRerender))
+	j.wrap.Set("openDevtools", js.FuncOf(j.openDevtools))
+
+	wait := make(chan any)
+	j.wrap.Call("prepare").Call("then", js.FuncOf(func(this js.Value, args []js.Value) any {
+		close(wait)
+		return nil
+	}))
+	<-wait
+
+	return j
+}
+
+func (j *jsapi) GetDimensions() (x, y int) {
+	ret := j.wrap.Call("getDimensions")
+	return ret.Get("x").Int(), ret.Get("y").Int()
+}
+
+func (j *jsapi) Clear() {
+	j.wrap.Call("clear")
+}
+
+func (j *jsapi) RenderText(x, y int, text string) {
+	j.wrap.Call("renderText", x, y, text)
+}
+
+func (j *jsapi) PrepareTextures(path ...string) {
+	wait := make(chan any)
+	jspath := make([]any, len(path))
+	for i, p := range path {
+		jspath[i] = js.ValueOf(p)
+	}
+	j.wrap.Call("prepareTextures", jspath...).
+		Call("then", js.FuncOf(func(this js.Value, args []js.Value) any {
+			close(wait)
+			return nil
+		}))
+	<-wait
+}
+
+func (j *jsapi) RenderTex(x, y, w, h int, path string, sx, sy int) {
+	j.wrap.Call("renderTex", x, y, w, h, path, sx, sy)
+}
+
+func (j *jsapi) GuessTextWidth(text string) int {
+	return j.wrap.Call("guessTextWidth", text).Int()
+}
+
+func (j *jsapi) GetLineHeight() int {
+	return j.wrap.Get("lineheight").Int()
+}
+
+func (j *jsapi) totalRerender(this js.Value, args []js.Value) any {
+	j.TotalRerender()
+	return nil
+}
+
+func (j *jsapi) TotalRerender() {
+	j.Clear()
+	if j.Root == nil {
+		return
+	}
+
+	w, h := j.GetDimensions()
+	_ = j.Root.Measure(j, components.Size{W: w, H: h})
+	l := j.Root.Layout(j, components.Rect{X: 0, Y: 0, W: w, H: h})
+	j.Root.Render(j, l)
+
+	if j.DevTools {
+		b, _ := json.Marshal(l)
+		j.wrap.Call("renderDevtools", string(b))
+	}
+}
+
+func pathKey(path []int) string {
+	if len(path) == 0 {
+		return ""
+	}
+	parts := make([]string, len(path))
+	for i, p := range path {
+		parts[i] = strconv.Itoa(p)
+	}
+	return strings.Join(parts, ".")
+}
+
+func (j *jsapi) openDevtools(this js.Value, args []js.Value) any {
+	j.DevTools = !j.DevTools
+	j.TotalRerender()
+	if !j.DevTools {
+		j.wrap.Call("closeDevtools")
+	}
+	return nil
+}
+
+func (j *jsapi) SocketURL() string {
+	return j.wrap.Get("socketURL").String()
+}
+
+func main() {
+	slog.SetDefault(slog.New(slogpretty.New(os.Stdout, &slogpretty.Options{
+		Level: slog.LevelDebug, AddSource: true, Colorful: true,
+		Multiline: true, TimeFormat: "01.02.06 3:04PM",
+	})))
+
+	j := NewJSAPI()
+
+	slog.Info("Connecting to gateway!", "url", j.SocketURL())
+	ws, _, err := websocket.Dial(context.Background(), j.SocketURL(), &websocket.DialOptions{})
+	if err != nil {
+		panic(err)
+	}
+	defer ws.CloseNow()
+
+	go func() {
+		for {
+			_, msg, err := ws.Read(context.Background())
+			if err != nil {
+				panic(err)
+			}
+			slog.Info("Received message")
+
+			var e webmsg.Envelope
+			if err := json.Unmarshal(msg, &e); err != nil {
+				slog.Error("Failed to unmarshal message", "err", err)
+				continue
+			}
+
+			switch e.Type {
+			case webmsg.TypeUpdate:
+				var u webmsg.Update
+				if err := json.Unmarshal(e.Data, &u); err != nil {
+					slog.Error("Failed to unmarshal update", "err", err)
+					continue
+				}
+				slog.Info("Update", "data", string(msg))
+				newroot, err := components.FromWire(u.Root)
+				if err != nil {
+					slog.Error("Failed to unmarshal root", "err", err)
+					continue
+				}
+				j.Root = newroot
+				j.TotalRerender()
+			}
+		}
+	}()
+
+	select {}
+}

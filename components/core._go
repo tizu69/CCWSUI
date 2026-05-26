@@ -7,65 +7,6 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-type Literal struct {
-	Text   string
-	Color  string
-	Wrap   Wrap
-	Select TextSelect
-	Shadow bool
-}
-
-func LiteralOf(text string) Literal {
-	return Literal{Text: text}
-}
-
-func (c Literal) WithColor(color string) Literal {
-	c.Color = color
-	return c
-}
-
-func (c Literal) WithWrap(wrap Wrap) Literal {
-	c.Wrap = wrap
-	return c
-}
-
-func (c Literal) WithSelect(sel TextSelect) Literal {
-	c.Select = sel
-	return c
-}
-
-func (c Literal) WithShadow() Literal {
-	c.Shadow = true
-	return c
-}
-
-func (c Literal) Render(ctx RenderContext) Node {
-	return Span(Data("ccwsui", "literal"), Styles{
-		"color:%s":       c.Color,
-		"text-wrap:%s":   c.Wrap.CSS(),
-		"user-select:%s": c.Select.CSS(),
-		"text-shadow:%s": ifelse(c.Shadow, "color-mix(in srgb, currentColor 25%, #000000) var(--px) var(--px)", "none"),
-	}, Text(c.Text))
-}
-
-type Padding struct {
-	T, L, B, R int
-	Child      Native
-}
-
-func Padded(t, l, b, r int, child Native) Padding {
-	return Padding{T: t, L: l, B: b, R: r, Child: child}
-}
-
-func (c Padding) Render(ctx RenderContext) Node {
-	return Div(Data("ccwsui", "padding"), Styles{
-		"padding-top:calc(var(--px)*%d)":    c.T,
-		"padding-left:calc(var(--px)*%d)":   c.L,
-		"padding-bottom:calc(var(--px)*%d)": c.B,
-		"padding-right:calc(var(--px)*%d)":  c.R,
-	}, c.Child.Render(ctx))
-}
-
 type Blank struct {
 	W, H int
 }
@@ -79,6 +20,14 @@ func (c Blank) Render(ctx RenderContext) Node {
 		"width:calc(var(--px)*%d)":  c.W,
 		"height:calc(var(--px)*%d)": c.H,
 	})
+}
+
+func (c Blank) Measure(constraint Size) Size {
+	return Size{W: c.W, H: c.H}
+}
+
+func (c Blank) Layout(rect Rect) LayoutNode {
+	return LayoutNode{Rect: rect}
 }
 
 type Texture struct {
@@ -117,12 +66,41 @@ func (c Texture) Render(ctx RenderContext) Node {
 	}), c.Child.Render(ctx)))
 }
 
+func (c Texture) Measure(constraint Size) Size {
+	childConstraint := Size{
+		W: max(0, constraint.W-c.L-c.R),
+		H: max(0, constraint.H-c.T-c.B),
+	}
+	child := c.Child.Measure(ctx, childConstraint)
+	return Size{W: child.W + c.L + c.R, H: child.H + c.T + c.B}
+}
+
+func (c Texture) Layout(rect Rect) LayoutNode {
+	childRect := Rect{
+		X: rect.X + c.L,
+		Y: rect.Y + c.T,
+		W: max(0, rect.W-c.L-c.R),
+		H: max(0, rect.H-c.T-c.B),
+	}
+	return LayoutNode{
+		Rect:     rect,
+		Children: []LayoutNode{c.Child.Layout(ctx, childRect)},
+	}
+}
+
 type RenderTime struct {
 	Child func() Native
 }
 
 func AtRenderTime(child func() Native) RenderTime  { return RenderTime{Child: child} }
 func (c RenderTime) Render(ctx RenderContext) Node { return c.Child().Render(ctx) }
+func (c RenderTime) Measure(constraint Size) Size {
+	return c.Child().Measure(ctx, constraint)
+}
+
+func (c RenderTime) Layout(rect Rect) LayoutNode {
+	return c.Child().Layout(ctx, rect)
+}
 
 type ItemTexture struct {
 	Item string
@@ -138,4 +116,12 @@ func (c ItemTexture) Render(ctx RenderContext) Node {
 		"background-size:100%":                        nil,
 		"background-repeat:no-repeat":                 nil,
 	})
+}
+
+func (c ItemTexture) Measure(constraint Size) Size {
+	return Size{W: 16, H: 16}
+}
+
+func (c ItemTexture) Layout(rect Rect) LayoutNode {
+	return LayoutNode{Rect: rect}
 }

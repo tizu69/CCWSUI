@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"embed"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 
 	"g.tizu.dev/CCWSUI/components"
 	"github.com/coder/websocket"
@@ -48,7 +51,8 @@ func (app *CCWSUI) handleRoom(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 
-	return components.Root(room, room.Title, room.Root).Render(w)
+	return components.RootV2(fmt.Sprintf("/r/%s/service",
+		url.PathEscape(room.id)), room.Title, room.Root).Render(w)
 }
 
 func (app *CCWSUI) handleRoomService(w http.ResponseWriter, r *http.Request) error {
@@ -58,15 +62,25 @@ func (app *CCWSUI) handleRoomService(w http.ResponseWriter, r *http.Request) err
 		return nil
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	conn, err := websocket.Accept(w, r,
 		&websocket.AcceptOptions{InsecureSkipVerify: true})
 	if err != nil {
 		return err
 	}
-	defer conn.Close(websocket.StatusInternalError, "Internal Server Error")
+	defer conn.CloseNow()
 
 	room.Add(conn)
 	defer room.Remove(conn)
+
+	for {
+		_, _, err := conn.Read(ctx)
+		if err != nil {
+			break
+		}
+	}
 
 	return nil
 }
@@ -78,7 +92,6 @@ func (app *CCWSUI) handleRoomEvent(w http.ResponseWriter, r *http.Request) error
 		return nil
 	}
 
-	value = "foobar"
-
-	return components.HtmxSwap("ccwsui-root", room.Root.Render(room)).Render(w)
+	// return components.HtmxSwap("ccwsui-root", room.Root.Render(room)).Render(w)
+	return nil
 }

@@ -1,12 +1,13 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
-	"math/rand"
 	"net/url"
-	"strconv"
 
 	"g.tizu.dev/CCWSUI/components"
+	"g.tizu.dev/CCWSUI/web/webmsg"
 	"github.com/coder/websocket"
 )
 
@@ -29,6 +30,10 @@ func NewRoom(id, title string, root components.Native) *Room {
 }
 
 func (r *Room) Add(conn *websocket.Conn) {
+	if err := r.sendUpdate(conn); err != nil {
+		conn.Close(websocket.StatusInternalError, err.Error())
+		return
+	}
 	r.listeners = append(r.listeners, conn)
 }
 
@@ -41,7 +46,23 @@ func (r *Room) Remove(conn *websocket.Conn) {
 	}
 }
 
-var _ components.RenderContext = (*Room)(nil)
+func (r *Room) sendUpdate(conn *websocket.Conn) error {
+	root, err := r.Root.ToWire()
+	if err != nil {
+		return err
+	}
+
+	var b []byte
+	if b, err = json.Marshal(webmsg.Update{Root: root}); err != nil {
+		return err
+	}
+	if b, err = json.Marshal(webmsg.Envelope{
+		Type: webmsg.TypeUpdate, Data: b,
+	}); err != nil {
+		return err
+	}
+	return conn.Write(context.TODO(), websocket.MessageText, b)
+}
 
 func (r *Room) SocketURL() string {
 	return fmt.Sprintf("/r/%s/service", url.PathEscape(r.id))
@@ -57,61 +78,76 @@ func getCoreRooms() map[string]*Room {
 	}
 }
 
-var value = ""
-
 func getCoreRoomHome() *Room {
 	return NewRoom("home", "CCWSUI!",
-		components.AtRenderTime(func() components.Native {
-			return components.AlignedCenter(
-				components.Textured("stockkeeper", 20, 21, 17, 21,
-					components.VStacked(
-						components.AlignedCenter(
-							components.Padded(3, 20, 3, 20,
-								components.LiteralOf("Stock Keeper").
-									WithColor("#000000"),
-							)),
+		components.VStacked(
+			components.HStacked(
+				components.Padded(8, 8, 8, 8,
+					components.LiteralOf("Hello there!")),
+				components.Padded(8, 8, 8, 8,
+					components.LiteralOf("Hello there!")),
+			),
+			components.AlignedCenter(
+				components.HStacked(
+					components.Padded(8, 8, 8, 8,
+						components.LiteralOf("Hello there!")),
+					components.Padded(8, 8, 8, 8,
+						components.LiteralOf("Hello there!")),
+					components.Padded(8, 8, 8, 8,
+						components.LiteralOf("Hello there!")),
+				)),
+		))
+	// components.AtRenderTime(func() components.Native {
+	// 	return components.AlignedCenter(
+	// 		components.Textured("stockkeeper", 20, 21, 17, 21,
+	// 			components.VStacked(
+	// 				components.AlignedCenter(
+	// 					components.Padded(3, 20, 3, 20,
+	// 						components.LiteralOf("Stock Keeper").
+	// 							WithColor("#000000"),
+	// 					)),
 
-						components.Padded(0, 20, 16, 20,
-							components.Clickable("awa", components.LiteralOf(strconv.Itoa(rand.Int()))),
-						),
+	// 				components.Padded(0, 20, 16, 20,
+	// 					components.Clickable("awa", components.LiteralOf(strconv.Itoa(rand.Int()))),
+	// 				),
 
-						components.Padded(0, 22, 18, 22, components.VStacked(
-							nineSlots(),
-							nineSlots(),
-							nineSlots(),
-							nineSlots()),
-						),
+	// 				components.Padded(0, 22, 18, 22, components.VStacked(
+	// 					nineSlots(),
+	// 					nineSlots(),
+	// 					nineSlots(),
+	// 					nineSlots()),
+	// 				),
 
-						components.Padded(0, 22, 18, 22,
-							components.HStacked(
-								slot(),
-								components.Textured("lineguide-inset", 4, 1, 4, 1,
-									components.Padded(3, 3, 4, 3,
-										components.Inputable("search", value)),
-								).WithPadBorder(false),
-							).WithPadding(4),
-						),
-					),
-				).WithPadBorder(false),
-			)
-		}))
+	// 				components.Padded(0, 22, 18, 22,
+	// 					components.HStacked(
+	// 						slot(),
+	// 						components.Textured("lineguide-inset", 4, 1, 4, 1,
+	// 							components.Padded(3, 3, 4, 3,
+	// 								components.Inputable("search", "Foo Bar!")),
+	// 						).WithPadBorder(false),
+	// 					).WithPadding(4),
+	// 				),
+	// 			),
+	// 		).WithPadBorder(false),
+	// 	)
+	// }))
 }
 
-func nineSlots() components.Native {
-	return components.HStacked(slot(), slot(), slot(),
-		slot(), slot(), slot(),
-		slot(), slot(), slot())
-}
+// func nineSlots() components.Native {
+// 	return components.HStacked(slot(), slot(), slot(),
+// 		slot(), slot(), slot(),
+// 		slot(), slot(), slot())
+// }
 
-func slot() components.Native {
-	items, _ := staticFS.ReadDir("static/item")
-	item := items[rand.Intn(len(items))]
-	count := rand.Intn(64) + 1
+// func slot() components.Native {
+// 	items, _ := staticFS.ReadDir("static/item")
+// 	item := items[rand.Intn(len(items))]
+// 	count := rand.Intn(64) + 1
 
-	return components.VStacked(
-		components.Textured("plain-inset", 1, 1, 1, 1,
-			components.ItemTextured(item.Name()[:len(item.Name())-4])),
-		components.AbsoluteAt(-2, -2, components.LiteralOf(
-			strconv.Itoa(count)).WithShadow()),
-	)
-}
+// 	return components.VStacked(
+// 		components.Textured("plain-inset", 1, 1, 1, 1,
+// 			components.ItemTextured(item.Name()[:len(item.Name())-4])),
+// 		components.AbsoluteAt(-1, -1, components.LiteralOf(
+// 			strconv.Itoa(count)).WithShadow()),
+// 	)
+// }

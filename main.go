@@ -33,7 +33,6 @@ func main() {
 	}
 
 	godotenv.Load()
-
 	addr := os.Getenv("CCWSUI_ADDR")
 	if addr == "" {
 		addr = ":8080"

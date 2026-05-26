@@ -1,0 +1,76 @@
+package components
+
+import (
+	. "maragu.dev/gomponents"
+	. "maragu.dev/gomponents/html"
+)
+
+type Expanded struct {
+	Child Native
+}
+
+func Expandeded(child Native) Expanded {
+	return Expanded{Child: child}
+}
+
+func (c Expanded) Render(ctx RenderContext) Node {
+	return Div(Data("ccwsui", "expanded"), Styles{
+		"flex:1": nil,
+	}, c.Child.Render(ctx))
+}
+
+func (c Expanded) Measure(constraint Size) Size {
+	return constraint
+}
+
+func (c Expanded) Layout(rect Rect) LayoutNode {
+	return LayoutNode{Rect: rect, Children: []LayoutNode{c.Child.Layout(ctx, rect)}}
+}
+
+type RelativeParent struct {
+	Child Native
+}
+
+type Absolute struct {
+	Child Native
+	X, Y  int
+}
+
+func AbsoluteAt(x, y int, child Native) Absolute {
+	return Absolute{Child: child, X: x, Y: y}
+}
+
+func (c Absolute) Render(ctx RenderContext) Node {
+	st := Styles{"position:absolute": nil}
+	if c.X >= 0 {
+		st["left:calc(var(--px)*%d)"] = c.X
+	} else {
+		st["right:calc(var(--px)*%d)"] = -c.X - 1
+	}
+	if c.Y >= 0 {
+		st["top:calc(var(--px)*%d)"] = c.Y
+	} else {
+		st["bottom:calc(var(--px)*%d)"] = -c.Y - 1
+	}
+
+	return Div(Data("ccwsui", "absolutechild"), st,
+		c.Child.Render(ctx), Data("ccwsui-snap", ""))
+}
+
+func (c Absolute) Measure(constraint Size) Size {
+	return c.Child.Measure(ctx, constraint)
+}
+
+func (c Absolute) Layout(rect Rect) LayoutNode {
+	childSize := c.Child.Measure(ctx, Size{W: rect.W, H: rect.H})
+	x := rect.X + c.X
+	y := rect.Y + c.Y
+	if c.X < 0 {
+		x = rect.X + rect.W - childSize.W + c.X + 1
+	}
+	if c.Y < 0 {
+		y = rect.Y + rect.H - childSize.H + c.Y + 1
+	}
+	childRect := Rect{X: x, Y: y, W: childSize.W, H: childSize.H}
+	return LayoutNode{Rect: rect, Children: []LayoutNode{c.Child.Layout(ctx, childRect)}}
+}

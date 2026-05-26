@@ -18,8 +18,16 @@ func (c ClickRegion) Render(ctx RenderContext) Node {
 	return Div(Data("ccwsui", "clickregion"), c.Child.Render(ctx),
 		ID("ccwsui-clickregion-"+c.Event),
 		Attr("role", "button"),
-		Attr("hx-post", ctx.EventURL(c.Event)),
+		Attr("hx-post", "" /* ctx.EventURL(c.Event) */),
 		Attr("hx-trigger", "click"))
+}
+
+func (c ClickRegion) Measure(constraint Size) Size {
+	return c.Child.Measure(ctx, constraint)
+}
+
+func (c ClickRegion) Layout(rect Rect) LayoutNode {
+	return LayoutNode{Rect: rect, Children: []LayoutNode{c.Child.Layout(ctx, rect)}}
 }
 
 type InputRegion struct {
@@ -35,8 +43,20 @@ func (c InputRegion) Render(ctx RenderContext) Node {
 	return Input(Data("ccwsui", "inputregion"),
 		ID("ccwsui-inputregion-"+c.Event),
 		Value(c.Value), Attr("role", "textbox"),
-		Attr("hx-post", ctx.EventURL(c.Event)),
+		Attr("hx-post", "" /* ctx.EventURL(c.Event) */),
 		Attr("hx-trigger", "input delay:2000ms"), Styles{
 			"text-shadow:%s": ifelse(true, "color-mix(in srgb, currentColor 25%, #000000) var(--px) var(--px)", "none"),
 		})
+}
+
+func (c InputRegion) Measure(constraint Size) Size {
+	w := len(c.Value) * 6
+	if w < 24 {
+		w = 24
+	}
+	return Size{W: w, H: 9}
+}
+
+func (c InputRegion) Layout(rect Rect) LayoutNode {
+	return LayoutNode{Rect: rect}
 }
