@@ -13,6 +13,7 @@
 
 	color: white;
 
+	background-color: #101010;
 	background-image: url("/static/background.png");
 	background-size: calc(var(--px) * 16);
 }
@@ -30,13 +31,13 @@
 	user-select: none;
 }
 
-[data-ccwsui] {
-	width: fit-content;
+#ccwsui-root {
+	width: 100dvw;
+	height: 100dvh;
+	display: flex;
+	flex-direction: column;
 }
 
-[data-ccwsui-first-child-margin] > :first-child {
-	margin-top: var(--first-child-margin-top);
-	margin-left: var(--first-child-margin-left);
-	margin-bottom: var(--first-child-margin-bottom);
-	margin-right: var(--first-child-margin-right);
+[data-ccwsui] {
+	width: fit-content;
 }

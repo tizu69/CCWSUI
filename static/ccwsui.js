@@ -15,11 +15,8 @@ function snapToGrid(container, gridPx) {
 		const rect = el.getBoundingClientRect();
 		let snapX = rect.left % gridPx;
 		let snapY = rect.top % gridPx;
-
-		// Handle negative modulo
 		if (snapX < 0) snapX += gridPx;
 		if (snapY < 0) snapY += gridPx;
-
 		el.style.transform = `translate(${-snapX}px, ${-snapY}px)`;
 	});
 }

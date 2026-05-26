@@ -37,3 +37,10 @@ type RenderContext interface {
 	SocketURL() string
 	EventURL(ev string) string
 }
+
+func ifelse[T any](cond bool, a, b T) T {
+	if cond {
+		return a
+	}
+	return b
+}

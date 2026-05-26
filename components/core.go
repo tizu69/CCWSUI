@@ -1,14 +1,18 @@
 package components
 
 import (
+	"strings"
+
 	. "maragu.dev/gomponents"
 	. "maragu.dev/gomponents/html"
 )
 
 type Literal struct {
-	Text  string
-	Color string
-	Wrap  Wrap
+	Text   string
+	Color  string
+	Wrap   Wrap
+	Select TextSelect
+	Shadow bool
 }
 
 func LiteralOf(text string) Literal {
@@ -25,10 +29,22 @@ func (c Literal) WithWrap(wrap Wrap) Literal {
 	return c
 }
 
+func (c Literal) WithSelect(sel TextSelect) Literal {
+	c.Select = sel
+	return c
+}
+
+func (c Literal) WithShadow() Literal {
+	c.Shadow = true
+	return c
+}
+
 func (c Literal) Render(ctx RenderContext) Node {
 	return Span(Data("ccwsui", "literal"), Styles{
-		"color:%s":     c.Color,
-		"text-wrap:%s": c.Wrap.CSS(),
+		"color:%s":       c.Color,
+		"text-wrap:%s":   c.Wrap.CSS(),
+		"user-select:%s": c.Select.CSS(),
+		"text-shadow:%s": ifelse(c.Shadow, "color-mix(in srgb, currentColor 25%, #000000) var(--px) var(--px)", "none"),
 	}, Text(c.Text))
 }
 
@@ -86,20 +102,19 @@ func (c Texture) WithPadBorder(v bool) Texture {
 
 func (c Texture) Render(ctx RenderContext) Node {
 	return Div(Data("ccwsui", "texture"), Styles{
-		"border-top:calc(var(--px)*%d)solid red":        c.T,
-		"border-right:calc(var(--px)*%d)solid red":      c.R,
-		"border-bottom:calc(var(--px)*%d)solid red":     c.B,
-		"border-left:calc(var(--px)*%d)solid red":       c.L,
+		"border-top:calc(var(--px)*%d)solid #202020":    c.T,
+		"border-right:calc(var(--px)*%d)solid #202020":  c.R,
+		"border-bottom:calc(var(--px)*%d)solid #202020": c.B,
+		"border-left:calc(var(--px)*%d)solid #202020":   c.L,
 		"border-image-source:url('/static/tex/%s.png')": c.Tex,
 		"border-image-slice:%d %d %d %d fill":           []any{c.T, c.R, c.B, c.L},
 		"border-image-repeat:round":                     nil,
-
-		"--first-child-margin-top:calc(var(--px)*%d)":    -c.T,
-		"--first-child-margin-left:calc(var(--px)*%d)":   -c.L,
-		"--first-child-margin-bottom:calc(var(--px)*%d)": -c.B,
-		"--first-child-margin-right:calc(var(--px)*%d)":  -c.R,
-	}, If(!c.PadBorder, Data("ccwsui-first-child-margin", "")),
-		c.Child.Render(ctx))
+	}, Div(If(!c.PadBorder, Styles{
+		"margin-top:calc(var(--px)*%d)":    -c.T,
+		"margin-left:calc(var(--px)*%d)":   -c.L,
+		"margin-bottom:calc(var(--px)*%d)": -c.B,
+		"margin-right:calc(var(--px)*%d)":  -c.R,
+	}), c.Child.Render(ctx)))
 }
 
 type ClickRegion struct {
@@ -124,3 +139,19 @@ type RenderTime struct {
 
 func AtRenderTime(child func() Native) RenderTime  { return RenderTime{Child: child} }
 func (c RenderTime) Render(ctx RenderContext) Node { return c.Child().Render(ctx) }
+
+type ItemTexture struct {
+	Item string
+}
+
+func ItemTextured(item string) ItemTexture { return ItemTexture{Item: item} }
+func (c ItemTexture) Render(ctx RenderContext) Node {
+	id := strings.ReplaceAll(c.Item, ":", "__")
+	return Div(Data("ccwsui", "itemtexture"), Styles{
+		"width:calc(var(--px)*16)":                    nil,
+		"height:calc(var(--px)*16)":                   nil,
+		"background-image:url('/static/item/%s.png')": id,
+		"background-size:100%":                        nil,
+		"background-repeat:no-repeat":                 nil,
+	})
+}

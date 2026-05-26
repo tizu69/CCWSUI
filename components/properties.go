@@ -1,36 +1,69 @@
 package components
 
-type Wrap string
-
-const (
-	YesWrap Wrap = "wrap"
-	NoWrap  Wrap = "nowrap"
-)
+type Wrap bool
 
 func (w Wrap) CSS() string {
 	switch w {
-	case YesWrap:
+	case true:
 		return "wrap"
 	default:
 		return "nowrap"
 	}
 }
 
-type StackAlign string
+type StackDirection string
 
 const (
-	StackAlignStart  StackAlign = "start"
-	StackAlignCenter StackAlign = "center"
-	StackAlignEnd    StackAlign = "end"
+	StackDirectionH StackDirection = "h"
+	StackDirectionV StackDirection = "v"
 )
 
-func (a StackAlign) CSS() string {
+func (a StackDirection) CSS() string {
 	switch a {
-	case StackAlignEnd:
+	case StackDirectionH:
+		return "row"
+	default:
+		return "column"
+	}
+}
+
+type Alignment string
+
+const (
+	AlignmentStart  Alignment = "start"
+	AlignmentCenter Alignment = "center"
+	AlignmentEnd    Alignment = "end"
+)
+
+func (a Alignment) CSS() string {
+	switch a {
+	case AlignmentEnd:
 		return "end"
-	case StackAlignCenter:
+	case AlignmentCenter:
 		return "center"
 	default:
 		return "start"
+	}
+}
+
+type TextSelect bool
+
+func (w TextSelect) CSS() string {
+	switch w {
+	case true:
+		return "text"
+	default:
+		return "none"
+	}
+}
+
+type GreedyGrow bool
+
+func (w GreedyGrow) CSS() string {
+	switch w {
+	case true:
+		return "100%"
+	default:
+		return "auto"
 	}
 }

@@ -59,47 +59,47 @@ func getCoreRooms() map[string]*Room {
 
 func getCoreRoomHome() *Room {
 	return NewRoom("home", "CCWSUI!",
-		components.Padded(8, 8, 8, 8,
-			components.Textured("stockkeeper", 20, 21, 17, 21,
-				components.VStacked(
-					components.Padded(3, 20, 3, 20,
-						components.LiteralOf("Stock Keeper").
-							WithColor("#000000").WithWrap(components.NoWrap),
-					),
+		components.AtRenderTime(func() components.Native {
+			return components.AlignedCenter(
+				components.Textured("stockkeeper", 20, 21, 17, 21,
+					components.VStacked(
+						components.AlignedCenter(
+							components.Padded(3, 20, 3, 20,
+								components.LiteralOf("Stock Keeper").
+									WithColor("#000000"),
+							)),
 
-					components.Padded(0, 20, 16, 20,
-						components.Clickable("awa",
-							components.AtRenderTime(func() components.Native {
-								return components.LiteralOf(strconv.Itoa(rand.Int()))
-							})),
-					),
+						components.Padded(0, 20, 16, 20,
+							components.Clickable("awa", components.LiteralOf(strconv.Itoa(rand.Int()))),
+						),
 
-					components.Padded(0, 22, 18, 22, components.VStacked(
-						nineSlots(),
-						nineSlots(),
-						nineSlots(),
-						nineSlots()),
+						components.Padded(0, 22, 18, 22, components.VStacked(
+							nineSlots(),
+							nineSlots(),
+							nineSlots(),
+							nineSlots()),
+						),
 					),
-				).WithAlign(components.StackAlignCenter),
-			).WithPadBorder(false)))
+				).WithPadBorder(false),
+			)
+		}))
 }
 
 func nineSlots() components.Native {
 	return components.HStacked(slot(), slot(), slot(),
-		slot(), tex(), slot(),
+		slot(), slot(), slot(),
 		slot(), slot(), slot())
 }
 
-func tex() components.Native {
-	return components.Padded(2, 2, 2, 2,
-		components.Textured("plain", 4, 4, 4, 4,
-			components.Blanked(18, 18)).
-			WithPadBorder(false))
-}
-
 func slot() components.Native {
-	return components.Padded(2, 2, 2, 2,
+	items, _ := staticFS.ReadDir("static/item")
+	item := items[rand.Intn(len(items))]
+	count := rand.Intn(64) + 1
+
+	return components.VStacked(
 		components.Textured("plain-inset", 1, 1, 1, 1,
-			components.Blanked(18, 18)).
-			WithPadBorder(false))
+			components.ItemTextured(item.Name()[:len(item.Name())-4])),
+		components.AbsoluteAt(-2, -2, components.LiteralOf(
+			strconv.Itoa(count)).WithShadow()),
+	)
 }

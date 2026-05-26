@@ -22,6 +22,16 @@ func main() {
 		Multiline: true, TimeFormat: "01.02.06 3:04PM",
 	})))
 
+	if files, err := staticFS.ReadDir("static/item"); err != nil || len(files) < 10 {
+		slog.Warn("Failed to list item textures, items won't render!", "err", err,
+			"1", "Grab IconExporter into a modpack you wish to export from",
+			"2", "Load a world",
+			"3", "Run '/iconexporter config general.fileNameHashComponents false'",
+			"4", "Run '/iconexporter export 256'",
+			"5", "Run 'rm *\\{*' to remove NBT files",
+			"6", "Place the PNGs into static/item")
+	}
+
 	godotenv.Load()
 
 	addr := os.Getenv("CCWSUI_ADDR")
