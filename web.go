@@ -51,8 +51,8 @@ func (app *CCWSUI) handleRoom(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 
-	return components.RootV2(fmt.Sprintf("/r/%s/service",
-		url.PathEscape(room.id)), room.Title, room.Root).Render(w)
+	return components.Root(fmt.Sprintf("/r/%s/service",
+		url.PathEscape(room.id)), room.Title, w)
 }
 
 func (app *CCWSUI) handleRoomService(w http.ResponseWriter, r *http.Request) error {

@@ -1,46 +1,33 @@
 package components
 
 import (
-	. "maragu.dev/gomponents"
-	. "maragu.dev/gomponents/components"
-	. "maragu.dev/gomponents/html"
+	"html/template"
+	"io"
 )
 
-func RootV2(url, title string, root Native) Node {
-	return HTML5(HTML5Props{
-		Title:    title,
-		Language: "en",
-		Head: []Node{
-			Script(Src("/static/wasm_exec.js")),
-			Link(Rel("stylesheet"), Href("/static/ccwsui.css")),
-			Script(Src("/static/ccwsui_next.js"), Defer()),
-			Script(ID("ccwsui-socketurl"), Type("text/plain"), Text(url)),
-		},
-		Body: []Node{
-			Canvas(ID("ccwsui-root")),
-		},
-	})
-}
+var rootTemplate, _ = template.New("root").Parse(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>{{.Title}}</title>
+	<script src="/static/wasm_exec.js"></script>
+	<link rel="stylesheet" href="/static/ccwsui.css">
+	<script src="/static/ccwsui_next.js" defer></script>
+	<script id="ccwsui-socketurl" type="text/plain">{{.SocketURL}}</script>
+</head>
+<body>
+	<canvas id="ccwsui-root"></canvas>
+</body>
+</html>
+`)
 
-func Root(ctx RenderContext, title string, root Native) Node {
-	return HTML5(HTML5Props{
-		Title:    title,
-		Language: "en",
-		Head: []Node{
-			Script(Src("/static/htmx.min.js")),
-			Script(Src("/static/hx-ws.js")),
-			Link(Rel("stylesheet"), Href("/static/ccwsui.css")),
-			Script(Src("/static/ccwsui.js"), Defer()),
-		},
-		Body: []Node{
-			Div(Attr("hx-ws:connect", "" /* ctx.SocketURL() */), /* root.Render(ctx) */
-				Attr("hx-swap:inherited", "none"), ID("ccwsui-root")),
-		},
+func Root(url, title string, w io.Writer) error {
+	return rootTemplate.Execute(w, map[string]any{
+		"SocketURL": url,
+		"Title":     title,
 	})
-}
-
-func HtmxSwap(to string, children ...Node) Node {
-	return Div(Attr("hx-swap-oob", "true"), ID(to), Group(children))
 }
 
 // Native components are components that are not composed of other components.
@@ -82,18 +69,4 @@ type LayoutNode struct {
 	Rect     Rect
 	Children []LayoutNode
 	Title    string
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-func ifelse[T any](cond bool, a, b T) T {
-	if cond {
-		return a
-	}
-	return b
 }
