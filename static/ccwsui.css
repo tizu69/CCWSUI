@@ -1,5 +1,3 @@
-@import "/static/reset.css";
-
 @font-face {
 	font-family: "CCWSUI";
 	src: url("/static/font.ttf");
@@ -16,7 +14,20 @@
 	color: white;
 
 	background-image: url("/static/background.png");
-	background-size: calc(var(--px) * 8);
+	background-size: calc(var(--px) * 16);
+}
+
+*,
+::after,
+::before,
+::backdrop,
+::file-selector-button {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+	border: 0 solid;
+	image-rendering: pixelated;
+	user-select: none;
 }
 
 [data-ccwsui] {

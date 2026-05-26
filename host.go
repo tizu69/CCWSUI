@@ -20,7 +20,7 @@ func (app *CCWSUI) handleHost(w http.ResponseWriter, r *http.Request) error {
 
 	room := uuid.New().String()
 	app.roomsmu.Lock()
-	app.rooms[room] = NewRoom("Home",
+	app.rooms[room] = NewRoom(room, "Home",
 		components.LiteralOf("Waiting for host..."))
 	app.roomsmu.Unlock()
 

@@ -1,19 +1,26 @@
 package main
 
 import (
+	"fmt"
+	"math/rand"
+	"net/url"
+	"strconv"
+
 	"g.tizu.dev/CCWSUI/components"
 	"github.com/coder/websocket"
 )
 
 type Room struct {
+	id    string
 	Title string
 	Root  components.Native
 
 	listeners []*websocket.Conn
 }
 
-func NewRoom(title string, root components.Native) *Room {
+func NewRoom(id, title string, root components.Native) *Room {
 	return &Room{
+		id:    id,
 		Title: title,
 		Root:  root,
 
@@ -34,6 +41,16 @@ func (r *Room) Remove(conn *websocket.Conn) {
 	}
 }
 
+var _ components.RenderContext = (*Room)(nil)
+
+func (r *Room) SocketURL() string {
+	return fmt.Sprintf("/r/%s/service", url.PathEscape(r.id))
+}
+
+func (r *Room) EventURL(ev string) string {
+	return fmt.Sprintf("/r/%s/event/%s", url.PathEscape(r.id), url.PathEscape(ev))
+}
+
 func getCoreRooms() map[string]*Room {
 	return map[string]*Room{
 		"home": getCoreRoomHome(),
@@ -41,16 +58,48 @@ func getCoreRooms() map[string]*Room {
 }
 
 func getCoreRoomHome() *Room {
-	return NewRoom("CCWSUI!",
+	return NewRoom("home", "CCWSUI!",
 		components.Padded(8, 8, 8, 8,
-			components.Textured("background-stock", "border-stock", 20, 21, 17, 21,
+			components.Textured("stockkeeper", 20, 21, 17, 21,
 				components.VStacked(
 					components.Padded(3, 20, 3, 20,
 						components.LiteralOf("Stock Keeper").
 							WithColor("#000000").WithWrap(components.NoWrap),
 					),
-					components.LiteralOf("awawawawawawawa"),
+
+					components.Padded(0, 20, 16, 20,
+						components.Clickable("awa",
+							components.AtRenderTime(func() components.Native {
+								return components.LiteralOf(strconv.Itoa(rand.Int()))
+							})),
+					),
+
+					components.Padded(0, 22, 18, 22, components.VStacked(
+						nineSlots(),
+						nineSlots(),
+						nineSlots(),
+						nineSlots()),
+					),
 				).WithAlign(components.StackAlignCenter),
-			).WithRepeat(components.BorderRepeatStretch).
-				WithPadBorder(false)))
+			).WithPadBorder(false)))
+}
+
+func nineSlots() components.Native {
+	return components.HStacked(slot(), slot(), slot(),
+		slot(), tex(), slot(),
+		slot(), slot(), slot())
+}
+
+func tex() components.Native {
+	return components.Padded(2, 2, 2, 2,
+		components.Textured("plain", 4, 4, 4, 4,
+			components.Blanked(18, 18)).
+			WithPadBorder(false))
+}
+
+func slot() components.Native {
+	return components.Padded(2, 2, 2, 2,
+		components.Textured("plain-inset", 1, 1, 1, 1,
+			components.Blanked(18, 18)).
+			WithPadBorder(false))
 }

@@ -25,7 +25,7 @@ func (c Literal) WithWrap(wrap Wrap) Literal {
 	return c
 }
 
-func (c Literal) Render() Node {
+func (c Literal) Render(ctx RenderContext) Node {
 	return Span(Data("ccwsui", "literal"), Styles{
 		"color:%s":     c.Color,
 		"text-wrap:%s": c.Wrap.CSS(),
@@ -41,34 +41,42 @@ func Padded(t, l, b, r int, child Native) Padding {
 	return Padding{T: t, L: l, B: b, R: r, Child: child}
 }
 
-func (c Padding) Render() Node {
+func (c Padding) Render(ctx RenderContext) Node {
 	return Div(Data("ccwsui", "padding"), Styles{
 		"padding-top:calc(var(--px)*%d)":    c.T,
 		"padding-left:calc(var(--px)*%d)":   c.L,
 		"padding-bottom:calc(var(--px)*%d)": c.B,
 		"padding-right:calc(var(--px)*%d)":  c.R,
-	}, c.Child.Render())
+	}, c.Child.Render(ctx))
+}
+
+type Blank struct {
+	W, H int
+}
+
+func Blanked(w, h int) Blank {
+	return Blank{W: w, H: h}
+}
+
+func (c Blank) Render(ctx RenderContext) Node {
+	return Div(Data("ccwsui", "blank"), Styles{
+		"width:calc(var(--px)*%d)":  c.W,
+		"height:calc(var(--px)*%d)": c.H,
+	})
 }
 
 type Texture struct {
-	Background string
-	Border     string
+	Tex        string
 	PadBorder  bool
-	Repeat     BorderRepeat
 	T, L, B, R int
 	Child      Native
 }
 
-func Textured(bg, border string, t, l, b, r int, child Native) Texture {
+func Textured(tex string, t, l, b, r int, child Native) Texture {
 	return Texture{
-		Background: bg, Border: border, PadBorder: true,
+		Tex: tex, PadBorder: true,
 		T: t, L: l, B: b, R: r, Child: child,
 	}
-}
-
-func (c Texture) WithRepeat(r BorderRepeat) Texture {
-	c.Repeat = r
-	return c
 }
 
 func (c Texture) WithPadBorder(v bool) Texture {
@@ -76,24 +84,43 @@ func (c Texture) WithPadBorder(v bool) Texture {
 	return c
 }
 
-func (c Texture) Render() Node {
+func (c Texture) Render(ctx RenderContext) Node {
 	return Div(Data("ccwsui", "texture"), Styles{
-		"background-image:url('/static/%s.png')": c.Background,
-		"background-size:calc(var(--px)*%d)":     2,
-		"background-clip:padding-box":            nil,
-
-		"border-top:calc(var(--px)*%d)solid red":    c.T,
-		"border-right:calc(var(--px)*%d)solid red":  c.R,
-		"border-bottom:calc(var(--px)*%d)solid red": c.B,
-		"border-left:calc(var(--px)*%d)solid red":   c.L,
-		"border-image-source:url('/static/%s.png')": c.Border,
-		"border-image-slice:%d %d %d %d fill":       []any{c.T, c.R, c.B, c.L},
-		"border-image-repeat:%s round":              c.Repeat.CSS(),
+		"border-top:calc(var(--px)*%d)solid red":        c.T,
+		"border-right:calc(var(--px)*%d)solid red":      c.R,
+		"border-bottom:calc(var(--px)*%d)solid red":     c.B,
+		"border-left:calc(var(--px)*%d)solid red":       c.L,
+		"border-image-source:url('/static/tex/%s.png')": c.Tex,
+		"border-image-slice:%d %d %d %d fill":           []any{c.T, c.R, c.B, c.L},
+		"border-image-repeat:round":                     nil,
 
 		"--first-child-margin-top:calc(var(--px)*%d)":    -c.T,
 		"--first-child-margin-left:calc(var(--px)*%d)":   -c.L,
 		"--first-child-margin-bottom:calc(var(--px)*%d)": -c.B,
 		"--first-child-margin-right:calc(var(--px)*%d)":  -c.R,
 	}, If(!c.PadBorder, Data("ccwsui-first-child-margin", "")),
-		c.Child.Render())
+		c.Child.Render(ctx))
 }
+
+type ClickRegion struct {
+	Event string
+	Child Native
+}
+
+func Clickable(event string, child Native) ClickRegion {
+	return ClickRegion{Event: event, Child: child}
+}
+
+func (c ClickRegion) Render(ctx RenderContext) Node {
+	return Div(Data("ccwsui", "clickregion"), c.Child.Render(ctx),
+		Attr("role", "button"),
+		Attr("hx-post", ctx.EventURL(c.Event)),
+		Attr("hx-trigger", "click"))
+}
+
+type RenderTime struct {
+	Child func() Native
+}
+
+func AtRenderTime(child func() Native) RenderTime  { return RenderTime{Child: child} }
+func (c RenderTime) Render(ctx RenderContext) Node { return c.Child().Render(ctx) }

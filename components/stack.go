@@ -19,10 +19,10 @@ func (c VStack) WithAlign(align StackAlign) VStack {
 	return c
 }
 
-func (c VStack) Render() Node {
+func (c VStack) Render(ctx RenderContext) Node {
 	children := make([]Node, len(c.Children))
 	for i, child := range c.Children {
-		children[i] = child.Render()
+		children[i] = child.Render(ctx)
 	}
 	return Div(Data("ccwsui", "vstack"), Styles{
 		"display:flex":          nil,
@@ -32,8 +32,10 @@ func (c VStack) Render() Node {
 }
 
 type HStack struct {
-	Align    StackAlign
-	Children []Native
+	Align          StackAlign
+	Children       []Native
+	MinW, MaxW     int
+	OverflowScroll bool
 }
 
 func HStacked(children ...Native) HStack {
@@ -45,10 +47,10 @@ func (c HStack) WithAlign(align StackAlign) HStack {
 	return c
 }
 
-func (c HStack) Render() Node {
+func (c HStack) Render(ctx RenderContext) Node {
 	children := make([]Node, len(c.Children))
 	for i, child := range c.Children {
-		children[i] = child.Render()
+		children[i] = child.Render(ctx)
 	}
 	return Div(Data("ccwsui", "hstack"), Styles{
 		"display:flex":       nil,

@@ -12,20 +12,19 @@ function estimatePx() {
  * @param {number} gridPx */
 function snapToGrid(container, gridPx) {
 	container.querySelectorAll("[data-ccwsui-snap] > *").forEach((el) => {
-		console.log("Fonts ready?", document.fonts.status);
-		console.log(
-			"Images loaded?",
-			[...document.images].every((img) => img.complete),
-		);
-		const offsetX = el.offsetLeft % gridPx;
-		const offsetY = el.offsetTop % gridPx;
-		console.log(el, offsetX, offsetY);
-		el.style.transform = `translate(${-offsetX}px, ${-offsetY}px)`;
+		const rect = el.getBoundingClientRect();
+		let snapX = rect.left % gridPx;
+		let snapY = rect.top % gridPx;
+
+		// Handle negative modulo
+		if (snapX < 0) snapX += gridPx;
+		if (snapY < 0) snapY += gridPx;
+
+		el.style.transform = `translate(${-snapX}px, ${-snapY}px)`;
 	});
 }
 
 const px = estimatePx();
-document.fonts.ready.then(() => snapToGrid(document.body, px));
-document.body.addEventListener("htmx:afterSwap", (e) => {
-	document.fonts.ready.then(() => snapToGrid(e.detail.target, px));
+document.body.addEventListener("htmx:after:process", (e) => {
+	document.fonts.ready.then(() => snapToGrid(e.target, px));
 });

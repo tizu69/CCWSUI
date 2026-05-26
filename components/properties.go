@@ -16,22 +16,6 @@ func (w Wrap) CSS() string {
 	}
 }
 
-type BorderRepeat string
-
-const (
-	BorderRepeatStretch BorderRepeat = "stretch"
-	BorderRepeatRound   BorderRepeat = "round"
-)
-
-func (r BorderRepeat) CSS() string {
-	switch r {
-	case BorderRepeatStretch:
-		return "stretch"
-	default:
-		return "round"
-	}
-}
-
 type StackAlign string
 
 const (
