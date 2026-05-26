@@ -57,6 +57,8 @@ func getCoreRooms() map[string]*Room {
 	}
 }
 
+var value = ""
+
 func getCoreRoomHome() *Room {
 	return NewRoom("home", "CCWSUI!",
 		components.AtRenderTime(func() components.Native {
@@ -78,6 +80,16 @@ func getCoreRoomHome() *Room {
 							nineSlots(),
 							nineSlots(),
 							nineSlots()),
+						),
+
+						components.Padded(0, 22, 18, 22,
+							components.HStacked(
+								slot(),
+								components.Textured("lineguide-inset", 4, 1, 4, 1,
+									components.Padded(3, 3, 4, 3,
+										components.Inputable("search", value)),
+								).WithPadBorder(false),
+							).WithPadding(4),
 						),
 					),
 				).WithPadBorder(false),

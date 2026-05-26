@@ -78,5 +78,7 @@ func (app *CCWSUI) handleRoomEvent(w http.ResponseWriter, r *http.Request) error
 		return nil
 	}
 
+	value = "foobar"
+
 	return components.HtmxSwap("ccwsui-root", room.Root.Render(room)).Render(w)
 }

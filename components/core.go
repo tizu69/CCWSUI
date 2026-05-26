@@ -117,22 +117,6 @@ func (c Texture) Render(ctx RenderContext) Node {
 	}), c.Child.Render(ctx)))
 }
 
-type ClickRegion struct {
-	Event string
-	Child Native
-}
-
-func Clickable(event string, child Native) ClickRegion {
-	return ClickRegion{Event: event, Child: child}
-}
-
-func (c ClickRegion) Render(ctx RenderContext) Node {
-	return Div(Data("ccwsui", "clickregion"), c.Child.Render(ctx),
-		Attr("role", "button"),
-		Attr("hx-post", ctx.EventURL(c.Event)),
-		Attr("hx-trigger", "click"))
-}
-
 type RenderTime struct {
 	Child func() Native
 }
