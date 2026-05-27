@@ -20,8 +20,7 @@ func AlignedY(y Alignment, child Native) Align   { return Aligned(AlignmentCente
 func AlignedCenter(child Native) Align           { return Aligned(AlignmentCenter, AlignmentCenter, child) }
 
 func (c Align) Measure(ctx MeasureContext, constraint Size) Size {
-	return constraint
-	// do we want this?: return c.Child.Measure(ctx, constraint)
+	return c.Child.Measure(ctx, constraint)
 }
 
 func (c Align) Layout(ctx LayoutContext, rect Rect) LayoutNode {

@@ -5,11 +5,14 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"image/color"
 	"log/slog"
 	"os"
 	"strconv"
 	"strings"
 	"syscall/js"
+	"time"
 
 	"g.tizu.dev/CCWSUI/components"
 	"g.tizu.dev/CCWSUI/web/webmsg"
@@ -39,17 +42,20 @@ func NewJSAPI() *jsapi {
 	return j
 }
 
-func (j *jsapi) GetDimensions() (x, y int) {
+func (j *jsapi) GetDimensions() (w, h int) {
 	ret := j.wrap.Call("getDimensions")
-	return ret.Get("x").Int(), ret.Get("y").Int()
+	return ret.Get("w").Int(), ret.Get("h").Int()
 }
 
 func (j *jsapi) Clear() {
 	j.wrap.Call("clear")
 }
 
-func (j *jsapi) RenderText(x, y int, text string) {
-	j.wrap.Call("renderText", x, y, text)
+func (j *jsapi) RenderText(x, y int, text string, color color.Color) {
+	r, g, b, a := color.RGBA()
+	hexcolor := fmt.Sprintf("#%02x%02x%02x%02x", uint8(r>>8),
+		uint8(g>>8), uint8(b>>8), uint8(a>>8))
+	j.wrap.Call("renderText", x, y, text, hexcolor)
 }
 
 func (j *jsapi) PrepareTextures(path ...string) {
@@ -68,6 +74,11 @@ func (j *jsapi) PrepareTextures(path ...string) {
 
 func (j *jsapi) RenderTex(x, y, w, h int, path string, sx, sy int) {
 	j.wrap.Call("renderTex", x, y, w, h, path, sx, sy)
+}
+
+func (j *jsapi) GetTexSize(path string) (w, h int) {
+	ret := j.wrap.Call("getTexSize", path)
+	return ret.Get("w").Int(), ret.Get("h").Int()
 }
 
 func (j *jsapi) GuessTextWidth(text string) int {
@@ -89,14 +100,19 @@ func (j *jsapi) TotalRerender() {
 		return
 	}
 
+	t := time.Now()
 	w, h := j.GetDimensions()
 	_ = j.Root.Measure(j, components.Size{W: w, H: h})
 	l := j.Root.Layout(j, components.Rect{X: 0, Y: 0, W: w, H: h})
+	tookLayout := time.Since(t).Microseconds()
+
+	t = time.Now()
 	j.Root.Render(j, l)
+	tookRender := time.Since(t).Milliseconds()
 
 	if j.DevTools {
 		b, _ := json.Marshal(l)
-		j.wrap.Call("renderDevtools", string(b))
+		j.wrap.Call("renderDevtools", string(b), tookLayout, tookRender)
 	}
 }
 
@@ -131,6 +147,7 @@ func main() {
 	})))
 
 	j := NewJSAPI()
+	j.PrepareTextures("stockkeeper")
 
 	slog.Info("Connecting to gateway!", "url", j.SocketURL())
 	ws, _, err := websocket.Dial(context.Background(), j.SocketURL(), &websocket.DialOptions{})

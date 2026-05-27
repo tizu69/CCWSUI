@@ -67,3 +67,22 @@ textarea,
 	text-shadow: color-mix(in srgb, currentColor 25%, #000000) var(--px)
 		var(--px);
 }
+
+.ccwsui-layout-tree-overlay {
+	position: absolute;
+	z-index: 998;
+}
+
+.ccwsui-layout-tree-title {
+	display: none;
+	position: absolute;
+	color: white;
+	padding: 2px;
+	font: 12px monospace;
+	z-index: 999;
+}
+
+.ccwsui-layout-tree-overlay:hover + .ccwsui-layout-tree-title,
+.ccwsui-layout-tree-title:hover {
+	display: block;
+}

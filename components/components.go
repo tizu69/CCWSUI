@@ -2,6 +2,7 @@ package components
 
 import (
 	"html/template"
+	"image/color"
 	"io"
 )
 
@@ -53,8 +54,9 @@ type LayoutContext interface {
 }
 
 type RenderContext interface {
-	RenderText(x, y int, text string)
+	RenderText(x, y int, text string, color color.Color)
 	RenderTex(x, y, w, h int, path string, sx, sy int)
+	GetTexSize(path string) (x, y int)
 }
 
 type Size struct {

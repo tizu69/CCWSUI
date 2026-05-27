@@ -2,13 +2,15 @@ package components
 
 import (
 	"encoding/json"
+	"image/color"
+	"strconv"
+	"strings"
 )
 
 type Literal struct {
 	Text   string
-	Color  string
+	Color  color.RGBA
 	Wrap   Wrap
-	Select TextSelect
 	Shadow bool
 }
 
@@ -17,21 +19,56 @@ func init() {
 }
 
 func LiteralOf(text string) Literal {
-	return Literal{Text: text}
+	return Literal{Text: text, Color: color.RGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff}}
 }
 
-func (c Literal) WithColor(color string) Literal {
-	c.Color = color
+func (c Literal) WithHexColor(hex string) Literal {
+	hex = strings.TrimPrefix(hex, "#")
+	switch len(hex) {
+	case 3:
+		c.Color = color.RGBA{
+			R: hexToByte(hex[0:1] + hex[0:1]),
+			G: hexToByte(hex[1:2] + hex[1:2]),
+			B: hexToByte(hex[2:3] + hex[2:3]),
+			A: 0xff,
+		}
+	case 6:
+		c.Color = color.RGBA{
+			R: hexToByte(hex[0:2]),
+			G: hexToByte(hex[2:4]),
+			B: hexToByte(hex[4:6]),
+			A: 0xff,
+		}
+	case 8:
+		c.Color = color.RGBA{
+			R: hexToByte(hex[0:2]),
+			G: hexToByte(hex[2:4]),
+			B: hexToByte(hex[4:6]),
+			A: hexToByte(hex[6:8]),
+		}
+	}
+	return c
+}
+
+func hexToByte(hex string) uint8 {
+	b, err := strconv.ParseUint(hex, 16, 8)
+	if err != nil {
+		return 0
+	}
+	return uint8(b)
+}
+
+func (c Literal) WithColor(colr color.Color) Literal {
+	r, g, b, a := colr.RGBA()
+	c.Color = color.RGBA{
+		R: uint8(r >> 8), G: uint8(g >> 8),
+		B: uint8(b >> 8), A: uint8(a >> 8),
+	}
 	return c
 }
 
 func (c Literal) WithWrap(wrap Wrap) Literal {
 	c.Wrap = wrap
-	return c
-}
-
-func (c Literal) WithSelect(sel TextSelect) Literal {
-	c.Select = sel
 	return c
 }
 
@@ -45,25 +82,29 @@ func (c Literal) Measure(ctx MeasureContext, constraint Size) Size {
 }
 
 func (c Literal) Layout(ctx LayoutContext, rect Rect) LayoutNode {
-	return LayoutNode{Rect: rect, Title: "Literal"}
+	return LayoutNode{Rect: Rect{
+		X: rect.X, Y: rect.Y,
+		W: ctx.GuessTextWidth(c.Text), H: ctx.GetLineHeight(),
+	}, Title: "Literal"}
 }
 
 func (c Literal) Render(ctx RenderContext, layout LayoutNode) {
-	ctx.RenderText(layout.Rect.X, layout.Rect.Y, c.Text)
+	if c.Shadow {
+		ctx.RenderText(layout.Rect.X+1, layout.Rect.Y+1, c.Text, color.RGBA{
+			R: c.Color.R / 4, G: c.Color.G / 4,
+			B: c.Color.B / 4, A: c.Color.A,
+		})
+	}
+	ctx.RenderText(layout.Rect.X, layout.Rect.Y, c.Text, c.Color)
 }
 
 func (c Literal) ToWire() (WireNode, error) {
 	p, err := json.Marshal(c)
-	if err != nil {
-		return WireNode{}, err
-	}
-	return WireNode{Kind: "literal", Props: p}, nil
+	return WireNode{Kind: "literal", Props: p}, err
 }
 
 func LiteralFromWire(n WireNode) (Native, error) {
 	var p Literal
-	if err := json.Unmarshal(n.Props, &p); err != nil {
-		return nil, err
-	}
-	return p, nil
+	err := json.Unmarshal(n.Props, &p)
+	return p, err
 }

@@ -1,5 +1,11 @@
+const isDevtoolsShortcut = (e) =>
+	e.key === "F12" ||
+	(e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "i") ||
+	(e.metaKey && e.altKey && e.key.toLowerCase() === "i");
+
 window.ccwsui = {
 	scale: 3,
+	baseline: 8,
 	lineheight: 9,
 	fontsize: 12,
 
@@ -31,32 +37,42 @@ window.ccwsui = {
 			this.totalRerender();
 		});
 		window.addEventListener("keydown", (e) => {
-			const isDevtoolsShortcut =
-				e.key === "F12" ||
-				(e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "i") ||
-				(e.metaKey && e.altKey && e.key.toLowerCase() === "i");
-			if (isDevtoolsShortcut) {
-				e.preventDefault();
-				this.openDevtools();
-			}
+			if (!isDevtoolsShortcut(e)) return;
+			e.preventDefault();
+			this.openDevtools();
 		});
+		window.addEventListener(
+			"wheel",
+			(e) => {
+				if (!e.ctrlKey) return;
+				e.preventDefault();
+				// zooming
+				this.scale = Math.max(
+					2,
+					Math.min(6, this.scale + Math.sign(-e.deltaY)),
+				);
+				console.log(this.scale);
+				this.totalRerender();
+			},
+			{ passive: false },
+		);
 	},
 
 	getDimensions() {
 		return {
-			x: Math.floor(this.canvas.width / this.scale),
-			y: Math.floor(this.canvas.height / this.scale),
+			w: Math.floor(this.canvas.width / this.scale),
+			h: Math.floor(this.canvas.height / this.scale),
 		};
 	},
 	clear() {
 		const ctx = this.canvas.getContext("2d");
 		ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 	},
-	renderText(x, y, text) {
+	renderText(x, y, text, color) {
 		const ctx = this.canvas.getContext("2d");
-		ctx.fillStyle = "white";
+		ctx.fillStyle = color;
 		ctx.font = this.scaled(this.fontsize) + "px CCWSUI";
-		ctx.fillText(text, this.scaled(x), this.scaled(y + this.lineheight));
+		ctx.fillText(text, this.scaled(x), this.scaled(y + this.baseline));
 	},
 	guessTextWidth(text) {
 		const ctx = this.canvas.getContext("2d");
@@ -66,12 +82,13 @@ window.ccwsui = {
 		return v;
 	},
 
+	/** @type {Record<string, HTMLImageElement>} */
 	textures: {},
 	async prepareTextures(...path) {
 		await Promise.all(
 			path.map((p) => {
 				const img = new Image();
-				img.src = p;
+				img.src = `/static/tex/${p}.png`;
 				return new Promise((resolve) => {
 					img.onload = () => {
 						this.textures[p] = img;
@@ -99,14 +116,21 @@ window.ccwsui = {
 			this.scaled(h),
 		);
 	},
+	getTexSize(path) {
+		const img = this.textures[path];
+		if (!img) return { w: 0, h: 0 };
+		return { w: img.width, h: img.height };
+	},
 
 	scaled(v) {
 		return Math.round(v) * this.scale;
 	},
 
-	renderDevtools(layoutJSON) {
-		this.closeDevtools();
+	devtoolsWindow: null,
+	renderDevtools(layoutJSON, tookLayout, tookDraw) {
 		const layout = JSON.parse(layoutJSON);
+
+		document.getElementById("ccwsui-devtools")?.remove();
 
 		const container = document.createElement("div");
 		container.id = "ccwsui-devtools";
@@ -120,67 +144,98 @@ window.ccwsui = {
 
 		let i = 0;
 		const nodes = [...(layout.Children || [])];
-		const occupied = new Set();
 		while (nodes.length > 0) {
 			const node = nodes.pop();
 			const { X, Y, W, H } = node.Rect;
 
-			const color = `hsl(${(i++ / 10) * 360}, 70%, 40%)`;
+			const color = `hsl(${(i++ * 137) % 360}deg, 70%, 40%)`;
 
 			const overlay = document.createElement("div");
-			overlay.style.position = "absolute";
+			overlay.classList.add("ccwsui-layout-tree-overlay");
 			overlay.style.left = `${X * this.scale}px`;
 			overlay.style.top = `${Y * this.scale}px`;
 			overlay.style.width = `${W * this.scale}px`;
 			overlay.style.height = `${H * this.scale}px`;
-			overlay.style.border = "4px solid " + color;
+			overlay.style.border = "3px solid " + color;
 			overlay.style.backgroundColor = `color-mix(in srgb, ${color} 20%, transparent)`;
-			overlay.style.boxSizing = "border-box";
-			overlay.style.zIndex = "9997";
 			container.appendChild(overlay);
 
-			let x = Math.ceil(X / 70) * 70;
-			let y = Math.ceil(Y / 8) * 8;
-			while (occupied.has(`${x},${y}`)) y += 8;
-			occupied.add(`${x},${y}`);
-
 			const title = document.createElement("p");
-			title.style.position = "absolute";
-			title.style.left = `${x * this.scale}px`;
-			title.style.top = `${y * this.scale}px`;
-			title.style.color = `white`;
+			title.classList.add("ccwsui-layout-tree-title");
+			title.style.left = `${X * this.scale}px`;
+			title.style.top = `${Y * this.scale}px`;
 			title.style.backgroundColor = color;
-			title.style.padding = "2px";
-			title.style.font = "12px monospace";
 			title.textContent = node.Title;
-			title.style.zIndex = "9998";
 			container.appendChild(title);
 
 			if (node.Children) nodes.push(...node.Children);
 		}
 
-		const panel = document.createElement("panel");
-		panel.style.position = "fixed";
-		panel.style.top = "0";
-		panel.style.right = "0";
-		panel.style.width = "5%";
-		panel.style.height = "100%";
-		panel.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
-		panel.style.zIndex = "9999";
-		panel.style.overflow = "auto";
-		panel.style.resize = "horizontal";
-		container.appendChild(panel);
+		let treeText = "CCWSUI Layout Tree\n";
+		let treeIndent = 1;
+		const ind = (s, ...args) =>
+			"  ".repeat(treeIndent) +
+			s.reduce((a, b, i) => a + args[i - 1] + b);
+		function printTree(node) {
+			treeText += ind`${node.Title} {\n`;
+			treeIndent++;
+			treeText += ind`x=${node.Rect.X}, y=${node.Rect.Y}, `;
+			treeText += `w=${node.Rect.W}, h=${node.Rect.H}\n`;
+			if (node.Children)
+				for (const child of node.Children) {
+					treeText += "\n";
+					printTree(child);
+				}
+			treeIndent--;
+			treeText += ind`}\n`;
+		}
 
-		const pre = document.createElement("pre");
-		pre.style.color = "white";
-		pre.style.fontFamily = "monospace";
-		pre.style.fontSize = "12px";
-		pre.style.padding = "10px";
-		pre.textContent = JSON.stringify(layout, null, 2);
-		panel.appendChild(pre);
+		const dims = this.getDimensions();
+		treeText += ind`Last layout pass took ${tookLayout}µs\n`;
+		treeText += ind`Last rerender took ${tookDraw}ms\n`;
+		treeText += ind`Rendered at ${dims.w}x${dims.h}px`;
+		treeText += ` (${Math.round((tookDraw * 1000000) / (dims.w * dims.h))}ns/px)\n\n`;
+		treeIndent--;
+
+		printTree(layout);
+
+		if (!this.devtoolsWindow || this.devtoolsWindow.closed) {
+			this.devtoolsWindow = window.open(
+				"",
+				"ccwsui-devtools",
+				"width=400,height=600",
+			);
+
+			this.devtoolsWindow.addEventListener(
+				"beforeunload",
+				this.openDevtools,
+			);
+			this.devtoolsWindow.addEventListener("keydown", (e) => {
+				if (!isDevtoolsShortcut(e)) return;
+				e.preventDefault();
+				this.closeDevtools();
+			});
+
+			this.devtoolsWindow.document.title = "ccwsui devtools";
+		}
+
+		const tree = document.createElement("pre");
+		tree.id = "ccwsui-devtools-tree";
+		tree.style.color = "#cdd6f4";
+		tree.style.fontFamily = "monospace";
+		tree.style.fontSize = "12px";
+		tree.style.padding = "10px";
+		tree.textContent = treeText;
+		this.devtoolsWindow.document
+			.getElementById("ccwsui-devtools-tree")
+			?.remove();
+		this.devtoolsWindow.document.body.appendChild(tree);
+		this.devtoolsWindow.document.documentElement.style.backgroundColor =
+			"#1e1e2e";
 	},
 	closeDevtools() {
 		document.getElementById("ccwsui-devtools")?.remove();
+		this.devtoolsWindow?.close();
 	},
 };
 

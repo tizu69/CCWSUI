@@ -56,24 +56,61 @@ func (c Stack) Measure(ctx MeasureContext, constraint Size) Size {
 
 func (c Stack) Layout(ctx LayoutContext, rect Rect) LayoutNode {
 	children := make([]LayoutNode, 0, len(c.Children))
+	constraint := Size{W: max(0, rect.W), H: max(0, rect.H)}
 	if c.Direction == StackDirectionH {
+		fixedW := 0
+		totalRest := 0
+		for _, child := range c.Children {
+			rest := stackRest(child)
+			if rest > 0 {
+				totalRest += rest
+				continue
+			}
+			cs := child.Measure(ctx, constraint)
+			fixedW += cs.W
+		}
+
+		remainingW := max(0, rect.W-fixedW-max(0, len(c.Children)-1)*c.Padding)
 		x := rect.X
 		for i, child := range c.Children {
-			cs := child.Measure(ctx, Size{W: max(0, rect.W), H: max(0, rect.H)})
-			childRect := Rect{X: x, Y: rect.Y, W: cs.W, H: rect.H}
+			w := 0
+			if rest := stackRest(child); rest > 0 {
+				w = remainingW * rest / totalRest
+			} else {
+				w = child.Measure(ctx, constraint).W
+			}
+			childRect := Rect{X: x, Y: rect.Y, W: w, H: rect.H}
 			children = append(children, child.Layout(ctx, childRect))
-			x += cs.W
+			x += w
 			if i < len(c.Children)-1 {
 				x += c.Padding
 			}
 		}
 	} else {
+		fixedH := 0
+		totalRest := 0
+		for _, child := range c.Children {
+			rest := stackRest(child)
+			if rest > 0 {
+				totalRest += rest
+				continue
+			}
+			cs := child.Measure(ctx, constraint)
+			fixedH += cs.H
+		}
+
+		remainingH := max(0, rect.H-fixedH-max(0, len(c.Children)-1)*c.Padding)
 		y := rect.Y
 		for i, child := range c.Children {
-			cs := child.Measure(ctx, Size{W: max(0, rect.W), H: max(0, rect.H)})
-			childRect := Rect{X: rect.X, Y: y, W: rect.W, H: cs.H}
+			h := 0
+			if rest := stackRest(child); rest > 0 {
+				h = remainingH * rest / totalRest
+			} else {
+				h = child.Measure(ctx, constraint).H
+			}
+			childRect := Rect{X: rect.X, Y: y, W: rect.W, H: h}
 			children = append(children, child.Layout(ctx, childRect))
-			y += cs.H
+			y += h
 			if i < len(c.Children)-1 {
 				y += c.Padding
 			}
@@ -121,4 +158,15 @@ func StackFromWire(n WireNode) (Native, error) {
 		p.Children = append(p.Children, c)
 	}
 	return p, err
+}
+
+type StackChild interface {
+	StackRest() int
+}
+
+func stackRest(child Native) int {
+	if stackChild, ok := child.(StackChild); ok {
+		return max(0, stackChild.StackRest())
+	}
+	return 0
 }
