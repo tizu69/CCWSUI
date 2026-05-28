@@ -76,6 +76,10 @@ func (j *jsapi) RenderTex(x, y, w, h int, path string, sx, sy int) {
 	j.wrap.Call("renderTex", x, y, w, h, path, sx, sy)
 }
 
+func (j *jsapi) RenderTexPattern(x, y, w, h int, path string, sx, sy, sw, sh int) {
+	j.wrap.Call("renderTexPattern", x, y, w, h, path, sx, sy, sw, sh)
+}
+
 func (j *jsapi) GetTexSize(path string) (w, h int) {
 	ret := j.wrap.Call("getTexSize", path)
 	return ret.Get("w").Int(), ret.Get("h").Int()
@@ -104,11 +108,11 @@ func (j *jsapi) TotalRerender() {
 	w, h := j.GetDimensions()
 	_ = j.Root.Measure(j, components.Size{W: w, H: h})
 	l := j.Root.Layout(j, components.Rect{X: 0, Y: 0, W: w, H: h})
-	tookLayout := time.Since(t).Microseconds()
+	tookLayout := time.Since(t).Nanoseconds()
 
 	t = time.Now()
 	j.Root.Render(j, l)
-	tookRender := time.Since(t).Milliseconds()
+	tookRender := time.Since(t).Nanoseconds()
 
 	if j.DevTools {
 		b, _ := json.Marshal(l)
@@ -148,6 +152,7 @@ func main() {
 
 	j := NewJSAPI()
 	j.PrepareTextures("stockkeeper")
+	j.PrepareTextures("background")
 
 	slog.Info("Connecting to gateway!", "url", j.SocketURL())
 	ws, _, err := websocket.Dial(context.Background(), j.SocketURL(), &websocket.DialOptions{})

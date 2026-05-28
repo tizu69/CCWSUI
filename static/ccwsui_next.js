@@ -48,10 +48,9 @@ window.ccwsui = {
 				e.preventDefault();
 				// zooming
 				this.scale = Math.max(
-					2,
+					1,
 					Math.min(6, this.scale + Math.sign(-e.deltaY)),
 				);
-				console.log(this.scale);
 				this.totalRerender();
 			},
 			{ passive: false },
@@ -65,17 +64,17 @@ window.ccwsui = {
 		};
 	},
 	clear() {
-		const ctx = this.canvas.getContext("2d");
+		const ctx = this.canvasContext;
 		ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 	},
 	renderText(x, y, text, color) {
-		const ctx = this.canvas.getContext("2d");
+		const ctx = this.canvasContext;
 		ctx.fillStyle = color;
 		ctx.font = this.scaled(this.fontsize) + "px CCWSUI";
 		ctx.fillText(text, this.scaled(x), this.scaled(y + this.baseline));
 	},
 	guessTextWidth(text) {
-		const ctx = this.canvas.getContext("2d");
+		const ctx = this.canvasContext;
 		ctx.font = this.scaled(this.fontsize) + "px CCWSUI";
 		const v = Math.round(ctx.measureText(text).width) / this.scale;
 		if (v % 1 !== 0) console.warn("Text width is not integer!", v, text);
@@ -100,7 +99,7 @@ window.ccwsui = {
 		);
 	},
 	renderTex(x, y, w, h, path, sx, sy) {
-		const ctx = this.canvas.getContext("2d");
+		const ctx = this.canvasContext;
 		const img = this.textures[path];
 		if (!img) return;
 		ctx.imageSmoothingEnabled = false;
@@ -116,12 +115,35 @@ window.ccwsui = {
 			this.scaled(h),
 		);
 	},
+	renderTexPattern(x, y, w, h, path, sx, sy, sw, sh) {
+		const ctx = this.canvasContext;
+		const img = this.textures[path];
+		if (!img) return;
+		ctx.imageSmoothingEnabled = false;
+
+		const subc = document.createElement("canvas");
+		subc.width = this.scaled(sw);
+		subc.height = this.scaled(sh);
+		const subctx = subc.getContext("2d");
+		subctx.imageSmoothingEnabled = false;
+		subctx.drawImage(img, sx, sy, sw, sh, 0, 0, subc.width, subc.height);
+
+		const scrx = this.scaled(x);
+		const scry = this.scaled(y);
+		const pattern = ctx.createPattern(subc, "repeat");
+		pattern.setTransform(new DOMMatrix([1, 0, 0, 1, scrx, scry]));
+		ctx.fillStyle = pattern;
+		ctx.fillRect(scrx, scry, this.scaled(w), this.scaled(h));
+	},
 	getTexSize(path) {
 		const img = this.textures[path];
 		if (!img) return { w: 0, h: 0 };
 		return { w: img.width, h: img.height };
 	},
 
+	get canvasContext() {
+		return this.canvas.getContext("2d");
+	},
 	scaled(v) {
 		return Math.round(v) * this.scale;
 	},
@@ -143,9 +165,9 @@ window.ccwsui = {
 		document.body.appendChild(container);
 
 		let i = 0;
-		const nodes = [...(layout.Children || [])];
+		const nodes = [layout];
 		while (nodes.length > 0) {
-			const node = nodes.pop();
+			const node = nodes.shift();
 			const { X, Y, W, H } = node.Rect;
 
 			const color = `hsl(${(i++ * 137) % 360}deg, 70%, 40%)`;
@@ -158,17 +180,23 @@ window.ccwsui = {
 			overlay.style.height = `${H * this.scale}px`;
 			overlay.style.border = "3px solid " + color;
 			overlay.style.backgroundColor = `color-mix(in srgb, ${color} 20%, transparent)`;
-			container.appendChild(overlay);
+			if (node._parent) container.appendChild(overlay);
 
 			const title = document.createElement("p");
 			title.classList.add("ccwsui-layout-tree-title");
 			title.style.left = `${X * this.scale}px`;
 			title.style.top = `${Y * this.scale}px`;
 			title.style.backgroundColor = color;
-			title.textContent = node.Title;
+			let titletext = node.Title;
+			for (let parent = node._parent; parent; parent = parent._parent)
+				titletext += `\nin ${parent.Title}`;
+			title.textContent = titletext;
 			container.appendChild(title);
 
-			if (node.Children) nodes.push(...node.Children);
+			for (const child of node.Children || []) {
+				child._parent = node;
+				nodes.push(child);
+			}
 		}
 
 		let treeText = "CCWSUI Layout Tree\n";
@@ -191,10 +219,10 @@ window.ccwsui = {
 		}
 
 		const dims = this.getDimensions();
-		treeText += ind`Last layout pass took ${tookLayout}µs\n`;
-		treeText += ind`Last rerender took ${tookDraw}ms\n`;
+		treeText += ind`Last layout took ${(tookLayout / 1e6).toFixed(2)}ms\n`;
+		treeText += ind`Last rerender took ${(tookDraw / 1e6).toFixed(2)}ms\n`;
 		treeText += ind`Rendered at ${dims.w}x${dims.h}px`;
-		treeText += ` (${Math.round((tookDraw * 1000000) / (dims.w * dims.h))}ns/px)\n\n`;
+		treeText += ` (${(tookDraw / (dims.w * dims.h)).toFixed(0)}ns/px)\n\n`;
 		treeIndent--;
 
 		printTree(layout);

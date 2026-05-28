@@ -19,10 +19,14 @@ func Constrained(w, h int, child Native) Constrain {
 }
 
 func (c Constrain) Measure(ctx MeasureContext, constraint Size) Size {
-	return c.Child.Measure(ctx, Size{
+	child := c.Child.Measure(ctx, Size{
 		W: min(c.W, constraint.W),
 		H: min(c.H, constraint.H),
 	})
+	return Size{
+		W: min(child.W, c.W, constraint.W),
+		H: min(child.H, c.H, constraint.H),
+	}
 }
 
 func (c Constrain) Layout(ctx LayoutContext, rect Rect) LayoutNode {
@@ -30,7 +34,7 @@ func (c Constrain) Layout(ctx LayoutContext, rect Rect) LayoutNode {
 		X: rect.X, Y: rect.Y, W: min(c.W, rect.W), H: min(c.H, rect.H),
 	}
 	return LayoutNode{
-		Rect:     childRect,
+		Rect:     rect,
 		Children: []LayoutNode{c.Child.Layout(ctx, childRect)},
 		Title:    fmt.Sprintf("Constrain (w=%d, h=%d)", c.W, c.H),
 	}

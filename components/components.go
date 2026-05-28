@@ -54,8 +54,11 @@ type LayoutContext interface {
 }
 
 type RenderContext interface {
+	GetDimensions() (w, h int)
+
 	RenderText(x, y int, text string, color color.Color)
 	RenderTex(x, y, w, h int, path string, sx, sy int)
+	RenderTexPattern(x, y, w, h int, path string, sx, sy, sw, sh int)
 	GetTexSize(path string) (x, y int)
 }
 

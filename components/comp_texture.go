@@ -51,55 +51,39 @@ func (c Texture) Render(ctx RenderContext, layout LayoutNode) {
 	srcMidW := max(1, texW-c.L-c.R)
 	srcMidH := max(1, texH-c.T-c.B)
 
-	x0, x1, x2 := r.X, r.X+leftW, r.X+leftW+midW
-	y0, y1, y2 := r.Y, r.Y+topH, r.Y+topH+midH
+	x1, x2 := r.X+leftW, r.X+leftW+midW
+	y1, y2 := r.Y+topH, r.Y+topH+midH
 
 	// corners
 	if leftW > 0 && topH > 0 {
-		ctx.RenderTex(x0, y0, leftW, topH, c.Tex, 0, 0)
+		ctx.RenderTex(r.X, r.Y, leftW, topH, c.Tex, 0, 0)
 	}
 	if rightW > 0 && topH > 0 {
-		ctx.RenderTex(x2, y0, rightW, topH, c.Tex, texW-c.R, 0)
+		ctx.RenderTex(x2, r.Y, rightW, topH, c.Tex, texW-c.R, 0)
 	}
 	if leftW > 0 && bottomH > 0 {
-		ctx.RenderTex(x0, y2, leftW, bottomH, c.Tex, 0, texH-c.B)
+		ctx.RenderTex(r.X, y2, leftW, bottomH, c.Tex, 0, texH-c.B)
 	}
 	if rightW > 0 && bottomH > 0 {
 		ctx.RenderTex(x2, y2, rightW, bottomH, c.Tex, texW-c.R, texH-c.B)
 	}
 
 	// edges
-	for x := x1; x < x2; {
-		w := min(srcMidW, x2-x)
-		if topH > 0 {
-			ctx.RenderTex(x, y0, w, topH, c.Tex, c.L, 0)
-		}
-		if bottomH > 0 {
-			ctx.RenderTex(x, y2, w, bottomH, c.Tex, c.L, texH-c.B)
-		}
-		x += w
+	if midW > 0 && topH > 0 {
+		ctx.RenderTexPattern(x1, r.Y, midW, topH, c.Tex, c.L, 0, srcMidW, topH)
 	}
-	for y := y1; y < y2; {
-		h := min(srcMidH, y2-y)
-		if leftW > 0 {
-			ctx.RenderTex(x0, y, leftW, h, c.Tex, 0, c.T)
-		}
-		if rightW > 0 {
-			ctx.RenderTex(x2, y, rightW, h, c.Tex, texW-c.R, c.T)
-		}
-		y += h
+	if midW > 0 && bottomH > 0 {
+		ctx.RenderTexPattern(x1, y2, midW, bottomH, c.Tex, c.L, texH-c.B, srcMidW, bottomH)
+	}
+	if midH > 0 && leftW > 0 {
+		ctx.RenderTexPattern(r.X, y1, leftW, midH, c.Tex, 0, c.T, leftW, srcMidH)
+	}
+	if midH > 0 && rightW > 0 {
+		ctx.RenderTexPattern(x2, y1, rightW, midH, c.Tex, texW-c.R, c.T, rightW, srcMidH)
 	}
 
 	// center
-	for y := y1; y < y2; {
-		h := min(srcMidH, y2-y)
-		for x := x1; x < x2; {
-			w := min(srcMidW, x2-x)
-			ctx.RenderTex(x, y, w, h, c.Tex, c.L, c.T)
-			x += w
-		}
-		y += h
-	}
+	ctx.RenderTexPattern(x1, y1, x2-x1, y2-y1, c.Tex, c.L, c.T, srcMidW, srcMidH)
 
 	c.Child.Render(ctx, layout.Children[0])
 }

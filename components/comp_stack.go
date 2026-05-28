@@ -160,13 +160,9 @@ func StackFromWire(n WireNode) (Native, error) {
 	return p, err
 }
 
-type StackChild interface {
-	StackRest() int
-}
-
 func stackRest(child Native) int {
-	if stackChild, ok := child.(StackChild); ok {
-		return max(0, stackChild.StackRest())
+	if _, ok := child.(Expanded); ok {
+		return 1
 	}
 	return 0
 }

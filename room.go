@@ -80,34 +80,36 @@ func getCoreRooms() map[string]*Room {
 
 func getCoreRoomHome() *Room {
 	return NewRoom("home", "CCWSUI!",
-		components.Padded(8, 8, 8, 8, components.HStacked(
-			components.StackUseRest(
-				components.Constrained(100, 100,
-					components.Textured("stockkeeper", 20, 21, 17, 21,
-						components.VStacked(
-							components.Padded(3, 20, 3, 20,
-								components.AlignedCenter(
-									components.LiteralOf("Stock Keeper").
-										WithHexColor("#000000")),
-							),
+		components.Overlaid(
+			components.Expand(components.Textured("background", 0, 0, 0, 0, components.Filler())),
+			components.Padded(8, 8, 8, 8, components.HStacked(
+				components.Expand(
+					components.AlignedCenter(
+						components.Constrained(100, 100,
+							components.Textured("stockkeeper", 20, 21, 17, 21,
+								components.VStacked(
+									components.Padded(3, 20, 3, 20,
+										components.AlignedCenter(
+											components.LiteralOf("Stock Keeper").
+												WithHexColor("#000000")),
+									),
 
-							components.Blanked(200, 100),
+									components.Expand(components.Blanked(1, 1)),
+								),
+							)))),
+				components.Blanked(8, 0),
+				components.Expand(components.Textured("stockkeeper", 20, 21, 17, 21,
+					components.VStacked(
+						components.Padded(3, 20, 3, 20,
+							components.AlignedCenter(
+								components.LiteralOf("Stock Keeper").
+									WithHexColor("#000000")),
 						),
-					))),
-			components.Blanked(8, 0),
-			components.StackUseRest(components.Textured("stockkeeper", 20, 21, 17, 21,
-				components.VStacked(
-					components.Padded(3, 20, 3, 20,
-						components.AlignedCenter(
-							components.LiteralOf("Stock Keeper").
-								WithHexColor("#000000")),
-					),
 
-					components.Blanked(200, 100),
-				),
-			)),
-		),
-		))
+						components.Blanked(200, 100),
+					),
+				)),
+			))))
 	// components.AtRenderTime(func() components.Native {
 	// 	return components.AlignedCenter(
 	// 			components.VStacked(
