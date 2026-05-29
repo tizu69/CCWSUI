@@ -52,6 +52,10 @@ textarea,
 	height: 100dvh;
 	display: flex;
 }
+#ccwsui-hires {
+	position: absolute;
+	inset: 0;
+}
 
 [data-ccwsui] {
 	width: fit-content;

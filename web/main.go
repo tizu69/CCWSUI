@@ -21,9 +21,10 @@ import (
 )
 
 type jsapi struct {
-	wrap     js.Value
-	Root     components.Native
-	DevTools bool
+	wrap             js.Value
+	Root             components.Native
+	DevTools         bool
+	requiredTextures []string
 }
 
 func NewJSAPI() *jsapi {
@@ -47,6 +48,11 @@ func (j *jsapi) GetDimensions() (w, h int) {
 	return ret.Get("w").Int(), ret.Get("h").Int()
 }
 
+func (j *jsapi) GetMousePos() (x, y int) {
+	ret := j.wrap.Call("getMousePos")
+	return ret.Get("x").Int(), ret.Get("y").Int()
+}
+
 func (j *jsapi) Clear() {
 	j.wrap.Call("clear")
 }
@@ -58,22 +64,32 @@ func (j *jsapi) RenderText(x, y int, text string, color color.Color) {
 	j.wrap.Call("renderText", x, y, text, hexcolor)
 }
 
-func (j *jsapi) PrepareTextures(path ...string) {
-	wait := make(chan any)
+func (j *jsapi) RequireTexture(path string) {
+	j.requiredTextures = append(j.requiredTextures, path)
+}
+
+func (j *jsapi) PrepareTextures(wait bool, path ...string) {
+	waitch := make(chan any)
 	jspath := make([]any, len(path))
 	for i, p := range path {
 		jspath[i] = js.ValueOf(p)
 	}
 	j.wrap.Call("prepareTextures", jspath...).
 		Call("then", js.FuncOf(func(this js.Value, args []js.Value) any {
-			close(wait)
+			close(waitch)
 			return nil
 		}))
-	<-wait
+	if wait {
+		<-waitch
+	}
 }
 
 func (j *jsapi) RenderTex(x, y, w, h int, path string, sx, sy int) {
 	j.wrap.Call("renderTex", x, y, w, h, path, sx, sy)
+}
+
+func (j *jsapi) RenderTexMixel(x, y, w, h int, path string, sx, sy, sw, sh int, nn bool) {
+	j.wrap.Call("renderTex", x, y, w, h, path, sx, sy, sw, sh, nn)
 }
 
 func (j *jsapi) RenderTexPattern(x, y, w, h int, path string, sx, sy, sw, sh int) {
@@ -94,11 +110,12 @@ func (j *jsapi) GetLineHeight() int {
 }
 
 func (j *jsapi) totalRerender(this js.Value, args []js.Value) any {
-	j.TotalRerender()
+	j.TotalRerender(args[0].String())
 	return nil
 }
 
-func (j *jsapi) TotalRerender() {
+func (j *jsapi) TotalRerender(reason string) {
+	slog.Info("Rerendering!")
 	j.Clear()
 	if j.Root == nil {
 		return
@@ -114,9 +131,14 @@ func (j *jsapi) TotalRerender() {
 	j.Root.Render(j, l)
 	tookRender := time.Since(t).Nanoseconds()
 
+	if j.requiredTextures != nil {
+		j.PrepareTextures(false, j.requiredTextures...)
+		j.requiredTextures = nil
+	}
+
 	if j.DevTools {
 		b, _ := json.Marshal(l)
-		j.wrap.Call("renderDevtools", string(b), tookLayout, tookRender)
+		j.wrap.Call("renderDevtools", reason, string(b), tookLayout, tookRender)
 	}
 }
 
@@ -133,7 +155,7 @@ func pathKey(path []int) string {
 
 func (j *jsapi) openDevtools(this js.Value, args []js.Value) any {
 	j.DevTools = !j.DevTools
-	j.TotalRerender()
+	j.TotalRerender("DevTools toggled")
 	if !j.DevTools {
 		j.wrap.Call("closeDevtools")
 	}
@@ -151,8 +173,6 @@ func main() {
 	})))
 
 	j := NewJSAPI()
-	j.PrepareTextures("stockkeeper")
-	j.PrepareTextures("background")
 
 	slog.Info("Connecting to gateway!", "url", j.SocketURL())
 	ws, _, err := websocket.Dial(context.Background(), j.SocketURL(), &websocket.DialOptions{})
@@ -189,7 +209,7 @@ func main() {
 					continue
 				}
 				j.Root = newroot
-				j.TotalRerender()
+				j.TotalRerender("Server-sent Tree Update")
 			}
 		}
 	}()

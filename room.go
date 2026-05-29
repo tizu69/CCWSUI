@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net/url"
 
 	"g.tizu.dev/CCWSUI/components"
@@ -98,17 +99,22 @@ func getCoreRoomHome() *Room {
 								),
 							)))),
 				components.Blanked(8, 0),
-				components.Expand(components.Textured("stockkeeper", 20, 21, 17, 21,
+				components.Textured("stockkeeper", 20, 21, 17, 21,
 					components.VStacked(
-						components.Padded(3, 20, 3, 20,
+						components.Padded(3, 20, 4, 20,
 							components.AlignedCenter(
 								components.LiteralOf("Stock Keeper").
 									WithHexColor("#000000")),
 						),
 
-						components.Blanked(200, 100),
+						components.Padded(1, 22, 18, 22, components.VStacked(
+							nineSlots(),
+							nineSlots(),
+							nineSlots(),
+							nineSlots()),
+						),
 					),
-				)),
+				),
 			))))
 	// components.AtRenderTime(func() components.Native {
 	// 	return components.AlignedCenter(
@@ -145,21 +151,22 @@ func getCoreRoomHome() *Room {
 	// }))
 }
 
-// func nineSlots() components.Native {
-// 	return components.HStacked(slot(), slot(), slot(),
-// 		slot(), slot(), slot(),
-// 		slot(), slot(), slot())
-// }
+func nineSlots() components.Native {
+	return components.HStacked(slot(), slot(), slot(),
+		slot(), slot(), slot(),
+		slot(), slot(), slot())
+}
 
-// func slot() components.Native {
-// 	items, _ := staticFS.ReadDir("static/item")
-// 	item := items[rand.Intn(len(items))]
-// 	count := rand.Intn(64) + 1
+func slot() components.Native {
+	items, _ := staticFS.ReadDir("static/item")
+	item := items[rand.Intn(len(items))]
+	count := rand.Intn(64) + 1
+	_ = count
 
-// 	return components.VStacked(
-// 		components.Textured("plain-inset", 1, 1, 1, 1,
-// 			components.ItemTextured(item.Name()[:len(item.Name())-4])),
-// 		components.AbsoluteAt(-1, -1, components.LiteralOf(
-// 			strconv.Itoa(count)).WithShadow()),
-// 	)
-// }
+	return components.VStacked(
+		components.Textured("plain-inset", 1, 1, 1, 1, components.Padded(1, 1, 1, 1,
+			components.ItemTextured(item.Name()[:len(item.Name())-4]))),
+		// components.AbsoluteAt(-1, -1, components.LiteralOf(
+		// 	strconv.Itoa(count)).WithShadow()),
+	)
+}

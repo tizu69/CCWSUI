@@ -6,7 +6,8 @@ import (
 )
 
 type Overlay struct {
-	Layers []Native `json:"-"`
+	Layers        []Native `json:"-"`
+	HoverRequired bool
 }
 
 func init() {
@@ -17,10 +18,9 @@ func Overlaid(layers ...Native) Overlay {
 	return Overlay{Layers: layers}
 }
 
-func (c Overlay) Render(ctx RenderContext, layout LayoutNode) {
-	for i, layer := range c.Layers {
-		layer.Render(ctx, layout.Children[i])
-	}
+func (c Overlay) RequireHover(v bool) Overlay {
+	c.HoverRequired = v
+	return c
 }
 
 func (c Overlay) Measure(ctx MeasureContext, constraint Size) Size {
@@ -44,7 +44,20 @@ func (c Overlay) Layout(ctx LayoutContext, rect Rect) LayoutNode {
 	}
 	return LayoutNode{
 		Rect: rect, Title: fmt.Sprintf("Overlay (%dx)", len(c.Layers)),
-		Children: children,
+		Children: children, RerenderMove: c.HoverRequired,
+	}
+}
+
+func (c Overlay) Render(ctx RenderContext, layout LayoutNode) {
+	if len(c.Layers) == 0 {
+		return
+	}
+	if c.HoverRequired && !layout.Rect.Contains(ctx.GetMousePos()) {
+		c.Layers[0].Render(ctx, layout.Children[0])
+		return
+	}
+	for i, layer := range c.Layers {
+		layer.Render(ctx, layout.Children[i])
 	}
 }
 

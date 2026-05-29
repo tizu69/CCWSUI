@@ -14,7 +14,7 @@ window.ccwsui = {
 		`ws://${window.location.hostname}:${window.location.port == 8081 ? 8080 : window.location.port}` +
 		document.getElementById("ccwsui-socketurl").textContent,
 
-	totalRerender() {
+	totalRerender(reason) {
 		throw new Error("Go wasm not initialized!");
 	},
 	openDevtools() {
@@ -23,6 +23,8 @@ window.ccwsui = {
 
 	/** @type {HTMLCanvasElement} */
 	canvas: document.getElementById("ccwsui-root"),
+
+	mousePos: { x: -1, y: -1 },
 	async prepare() {
 		const font = new FontFace("CCWSUI", 'url("/static/font.ttf")');
 		await font.load();
@@ -34,12 +36,18 @@ window.ccwsui = {
 		window.addEventListener("resize", () => {
 			this.canvas.width = window.innerWidth;
 			this.canvas.height = window.innerHeight;
-			this.totalRerender();
+			this.totalRerender("Resized");
 		});
 		window.addEventListener("keydown", (e) => {
 			if (!isDevtoolsShortcut(e)) return;
 			e.preventDefault();
 			this.openDevtools();
+		});
+		window.addEventListener("mousemove", (e) => {
+			this.mousePos = {
+				x: Math.floor(e.clientX / this.scale),
+				y: Math.floor(e.clientY / this.scale),
+			};
 		});
 		window.addEventListener(
 			"wheel",
@@ -47,11 +55,11 @@ window.ccwsui = {
 				if (!e.ctrlKey) return;
 				e.preventDefault();
 				// zooming
-				this.scale = Math.max(
-					1,
-					Math.min(6, this.scale + Math.sign(-e.deltaY)),
+				this.scale = Math.min(
+					7,
+					Math.max(1, this.scale + Math.sign(-e.deltaY)),
 				);
-				this.totalRerender();
+				this.totalRerender("Zoomed");
 			},
 			{ passive: false },
 		);
@@ -63,6 +71,10 @@ window.ccwsui = {
 			h: Math.floor(this.canvas.height / this.scale),
 		};
 	},
+	getMousePos() {
+		return this.mousePos;
+	},
+
 	clear() {
 		const ctx = this.canvasContext;
 		ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -84,42 +96,69 @@ window.ccwsui = {
 	/** @type {Record<string, HTMLImageElement>} */
 	textures: {},
 	async prepareTextures(...path) {
+		let anyAreNew = false;
 		await Promise.all(
 			path.map((p) => {
+				if (this.textures[p]) return;
+				anyAreNew = true;
 				const img = new Image();
-				img.src = `/static/tex/${p}.png`;
+				if (p.startsWith("@item/"))
+					img.src = `/static/item/${p.slice(6)}.png`;
+				else img.src = `/static/tex/${p}.png`;
 				return new Promise((resolve) => {
 					img.onload = () => {
 						this.textures[p] = img;
 						resolve();
 					};
-					img.onerror = resolve;
+					img.onerror = () => {
+						console.error(`Failed to load texture: ${p}`);
+						resolve();
+					};
 				});
 			}),
 		);
+		if (anyAreNew) this.totalRerender("Textures have loaded");
 	},
-	renderTex(x, y, w, h, path, sx, sy) {
+	renderTex(x, y, w, h, path, sx, sy, sw = w, sh = h, nn = true) {
 		const ctx = this.canvasContext;
 		const img = this.textures[path];
 		if (!img) return;
-		ctx.imageSmoothingEnabled = false;
+		ctx.imageSmoothingEnabled = !nn;
 		ctx.drawImage(
 			img,
 			sx,
 			sy,
-			w,
-			h,
+			sw,
+			sh,
 			this.scaled(x),
 			this.scaled(y),
 			this.scaled(w),
 			this.scaled(h),
 		);
 	},
+	/** @type {Record<string, CanvasPattern>} */
+	renderTexPatternCache: {},
 	renderTexPattern(x, y, w, h, path, sx, sy, sw, sh) {
 		const ctx = this.canvasContext;
 		const img = this.textures[path];
 		if (!img) return;
 		ctx.imageSmoothingEnabled = false;
+
+		const cacheKey = `${path}:${sx}:${sy}:${sw}:${sh}:${this.scale}`;
+		if (this.renderTexPatternCache[cacheKey]) {
+			const pattern = this.renderTexPatternCache[cacheKey];
+			pattern.setTransform(
+				new DOMMatrix([1, 0, 0, 1, this.scaled(x), this.scaled(y)]),
+			);
+			ctx.fillStyle = pattern;
+			ctx.fillRect(
+				this.scaled(x),
+				this.scaled(y),
+				this.scaled(w),
+				this.scaled(h),
+			);
+			return;
+		}
 
 		const subc = document.createElement("canvas");
 		subc.width = this.scaled(sw);
@@ -132,6 +171,11 @@ window.ccwsui = {
 		const scry = this.scaled(y);
 		const pattern = ctx.createPattern(subc, "repeat");
 		pattern.setTransform(new DOMMatrix([1, 0, 0, 1, scrx, scry]));
+
+		if (Object.keys(this.renderTexPatternCache).length >= 4096)
+			this.renderTexPatternCache = {};
+		this.renderTexPatternCache[cacheKey] = pattern;
+
 		ctx.fillStyle = pattern;
 		ctx.fillRect(scrx, scry, this.scaled(w), this.scaled(h));
 	},
@@ -149,7 +193,7 @@ window.ccwsui = {
 	},
 
 	devtoolsWindow: null,
-	renderDevtools(layoutJSON, tookLayout, tookDraw) {
+	renderDevtools(reason, layoutJSON, tookLayout, tookDraw) {
 		const layout = JSON.parse(layoutJSON);
 
 		document.getElementById("ccwsui-devtools")?.remove();
@@ -219,6 +263,8 @@ window.ccwsui = {
 		}
 
 		const dims = this.getDimensions();
+		treeText += ind`Built at ${new Date().toTimeString().split(" ")[0]} `;
+		treeText += `(${reason})\n`;
 		treeText += ind`Last layout took ${(tookLayout / 1e6).toFixed(2)}ms\n`;
 		treeText += ind`Last rerender took ${(tookDraw / 1e6).toFixed(2)}ms\n`;
 		treeText += ind`Rendered at ${dims.w}x${dims.h}px`;

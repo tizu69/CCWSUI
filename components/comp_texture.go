@@ -32,6 +32,8 @@ func (c Texture) Layout(ctx LayoutContext, rect Rect) LayoutNode {
 }
 
 func (c Texture) Render(ctx RenderContext, layout LayoutNode) {
+	ctx.RequireTexture(c.Tex)
+
 	r := layout.Rect
 	texW, texH := ctx.GetTexSize(c.Tex)
 	if r.W <= 0 || r.H <= 0 || texW <= 0 || texH <= 0 {

@@ -20,27 +20,3 @@ func (c RenderTime) Measure(constraint Size) Size {
 func (c RenderTime) Layout(rect Rect) LayoutNode {
 	return c.Child().Layout(ctx, rect)
 }
-
-type ItemTexture struct {
-	Item string
-}
-
-func ItemTextured(item string) ItemTexture { return ItemTexture{Item: item} }
-func (c ItemTexture) Render(ctx RenderContext) Node {
-	id := strings.ReplaceAll(c.Item, ":", "__")
-	return Div(Data("ccwsui", "itemtexture"), Styles{
-		"width:calc(var(--px)*16)":                    nil,
-		"height:calc(var(--px)*16)":                   nil,
-		"background-image:url('/static/item/%s.png')": id,
-		"background-size:100%":                        nil,
-		"background-repeat:no-repeat":                 nil,
-	})
-}
-
-func (c ItemTexture) Measure(constraint Size) Size {
-	return Size{W: 16, H: 16}
-}
-
-func (c ItemTexture) Layout(rect Rect) LayoutNode {
-	return LayoutNode{Rect: rect}
-}

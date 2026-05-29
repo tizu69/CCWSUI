@@ -57,11 +57,18 @@ type RenderContext interface {
 	MeasureContext
 
 	GetDimensions() (w, h int)
+	GetMousePos() (x, y int)
 
 	RenderText(x, y int, text string, color color.Color)
 	RenderTex(x, y, w, h int, path string, sx, sy int)
+	RenderTexMixel(x, y, w, h int, path string, sx, sy, sw, sh int, nn bool)
 	RenderTexPattern(x, y, w, h int, path string, sx, sy, sw, sh int)
 	GetTexSize(path string) (x, y int)
+
+	// When called, the given texture will be loaded and cached after this
+	// render pass is done. This is a no-op if the texture is already loaded.
+	// It should be called prior to any calls to Texture-related functions.
+	RequireTexture(path string)
 }
 
 type Size struct {
@@ -72,8 +79,14 @@ type Rect struct {
 	X, Y, W, H int
 }
 
+func (rc Rect) Contains(x, y int) bool {
+	return x >= rc.X && x < rc.X+rc.W && y >= rc.Y && y < rc.Y+rc.H
+}
+
 type LayoutNode struct {
 	Rect     Rect
 	Children []LayoutNode
 	Title    string
+
+	RerenderMove bool // Rerender when the mouse is moved on top of this?
 }
