@@ -8,10 +8,11 @@ import (
 )
 
 type Literal struct {
-	Text   string
-	Color  color.RGBA
-	Wrap   Wrap
-	Shadow bool
+	Text      string
+	Color     color.RGBA
+	Wrap      bool
+	Shadow    bool
+	Alignment Alignment
 }
 
 func init() {
@@ -67,35 +68,58 @@ func (c Literal) WithColor(colr color.Color) Literal {
 	return c
 }
 
-func (c Literal) WithWrap(wrap Wrap) Literal {
+func (c Literal) WithWrap(wrap bool) Literal {
 	c.Wrap = wrap
 	return c
 }
 
-func (c Literal) WithShadow() Literal {
-	c.Shadow = true
+func (c Literal) WithShadow(shadow bool) Literal {
+	c.Shadow = shadow
+	return c
+}
+
+func (c Literal) WithAlignment(alignment Alignment) Literal {
+	c.Alignment = alignment
 	return c
 }
 
 func (c Literal) Measure(ctx MeasureContext, constraint Size) Size {
-	return Size{W: ctx.GuessTextWidth(c.Text), H: ctx.GetLineHeight()}
+	lines, longest := c.maybeWrap(ctx, constraint.W)
+	return Size{W: longest, H: len(lines) * ctx.GetLineHeight()}
 }
 
 func (c Literal) Layout(ctx LayoutContext, rect Rect) LayoutNode {
+	lines, longest := c.maybeWrap(ctx, rect.W)
 	return LayoutNode{Rect: Rect{
-		X: rect.X, Y: rect.Y,
-		W: ctx.GuessTextWidth(c.Text), H: ctx.GetLineHeight(),
+		X: rect.X, Y: rect.Y, W: longest, H: len(lines) * ctx.GetLineHeight(),
 	}, Title: "Literal"}
 }
 
 func (c Literal) Render(ctx RenderContext, layout LayoutNode) {
-	if c.Shadow {
-		ctx.RenderText(layout.Rect.X+1, layout.Rect.Y+1, c.Text, color.RGBA{
-			R: c.Color.R / 4, G: c.Color.G / 4,
-			B: c.Color.B / 4, A: c.Color.A,
-		})
+	lines, _ := c.maybeWrap(ctx, layout.Rect.W)
+	for i, line := range lines {
+		offsetY := layout.Rect.Y + i*ctx.GetLineHeight()
+		offsetX := layout.Rect.X
+		switch c.Alignment {
+		case AlignmentCenter:
+			offsetX += (layout.Rect.W - ctx.GuessTextWidth(line)) / 2
+		case AlignmentEnd:
+			offsetX += layout.Rect.W - ctx.GuessTextWidth(line)
+		}
+		if c.Shadow {
+			col := color.RGBA{
+				R: c.Color.R / 4, G: c.Color.G / 4,
+				B: c.Color.B / 4, A: c.Color.A,
+			}
+			if col.R+col.G+col.B < 10 { // (practically) black
+				col.R = 128
+				col.G = 128
+				col.B = 128
+			}
+			ctx.RenderText(offsetX+1, offsetY+1, line, col)
+		}
+		ctx.RenderText(offsetX, offsetY, line, c.Color)
 	}
-	ctx.RenderText(layout.Rect.X, layout.Rect.Y, c.Text, c.Color)
 }
 
 func (c Literal) ToWire() (WireNode, error) {
@@ -107,4 +131,48 @@ func LiteralFromWire(n WireNode) (Native, error) {
 	var p Literal
 	err := json.Unmarshal(n.Props, &p)
 	return p, err
+}
+
+// maybeWrap returns the wrapped lines of text and the longest line's width.
+func (c Literal) maybeWrap(ctx MeasureContext, width int) (lines []string, longest int) {
+	if !c.Wrap || width <= 0 {
+		return []string{c.Text}, ctx.GuessTextWidth(c.Text)
+	}
+
+	words := strings.Fields(c.Text)
+	if len(words) == 0 {
+		return []string{""}, 0
+	}
+
+	var current string
+	flush := func() {
+		if current == "" {
+			return
+		}
+		w := ctx.GuessTextWidth(current)
+		if w > longest {
+			longest = w
+		}
+		lines = append(lines, current)
+		current = ""
+	}
+
+	for _, word := range words {
+		if current == "" {
+			current = word
+			continue
+		}
+
+		candidate := current + " " + word
+		if ctx.GuessTextWidth(candidate) <= width {
+			current = candidate
+		} else {
+			flush()
+			current = word
+		}
+	}
+
+	flush()
+
+	return lines, longest
 }

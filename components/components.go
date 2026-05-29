@@ -54,6 +54,8 @@ type LayoutContext interface {
 }
 
 type RenderContext interface {
+	MeasureContext
+
 	GetDimensions() (w, h int)
 
 	RenderText(x, y int, text string, color color.Color)
