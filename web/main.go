@@ -244,6 +244,14 @@ func main() {
 				}
 				j.Root = newroot
 				j.TotalRerender("Server-sent Tree Update")
+			case webmsg.TypeTexture:
+				var t webmsg.Texture
+				if err := json.Unmarshal(e.Data, &t); err != nil {
+					slog.Error("Failed to unmarshal texture", "err", err)
+					continue
+				}
+				j.wrap.Get("userTextures").Set(t.ID, t.Data)
+				j.TotalRerender("Server-sent Texture Update")
 			}
 		}
 	}()

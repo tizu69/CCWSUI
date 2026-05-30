@@ -180,6 +180,8 @@ window.ccwsui = {
 
 	/** @type {Record<string, HTMLCanvasElement>} */
 	textures: {},
+	/** @type {Record<string, string>} */
+	userTextures: {},
 	async prepareTextures(...path) {
 		let anyAreNew = false;
 		await Promise.all(
@@ -188,14 +190,16 @@ window.ccwsui = {
 				anyAreNew = true;
 
 				const flags = {};
-				const [path, ...flagList] = p.split(";");
+				let [path, ...flagList] = p.split(";");
 				for (const flag of flagList) {
 					const [key, value] = flag.split("=");
 					flags[key] = value;
 				}
 
 				const img = new Image();
-				if (path.startsWith("@item/"))
+				if (path in this.userTextures)
+					img.src = `data:image/png;base64,${this.userTextures[path]}`;
+				else if (path.startsWith("@item/"))
 					img.src = `/static/item/${path.slice(6)}.png`;
 				else img.src = `/static/tex/${path}.png`;
 

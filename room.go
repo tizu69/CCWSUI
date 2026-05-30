@@ -55,6 +55,19 @@ func (r *Room) sendUpdate(conn *websocket.Conn) error {
 	}
 
 	var b []byte
+	const data = "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAQAAADYv8WvAAAAAXNSR0IArs4c6QAAABJJREFUCJlj9Pz/kYHpIwM/AwAVIAM98dt1zAAAAABJRU5ErkJggg=="
+	if b, err = json.Marshal(webmsg.Texture{ID: "externallyloaded", Data: data}); err != nil {
+		return err
+	}
+	if b, err = json.Marshal(webmsg.Envelope{
+		Type: webmsg.TypeTexture, Data: b,
+	}); err != nil {
+		return err
+	}
+	if err = conn.Write(context.TODO(), websocket.MessageText, b); err != nil {
+		return err
+	}
+
 	if b, err = json.Marshal(webmsg.Update{Root: root}); err != nil {
 		return err
 	}
@@ -63,7 +76,11 @@ func (r *Room) sendUpdate(conn *websocket.Conn) error {
 	}); err != nil {
 		return err
 	}
-	return conn.Write(context.TODO(), websocket.MessageText, b)
+	if err = conn.Write(context.TODO(), websocket.MessageText, b); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *Room) SocketURL() string {
@@ -143,6 +160,10 @@ func getCoreRoomHome() *Room {
 												Add(" keep track of items!").WithHexColor("#cba6f7").
 												WithWrap(true).WithAlignment(components.AlignmentCenter),
 										)).SetPad(true)),
+
+								components.Blanked(32, 32),
+								components.Textured("externallyloaded", 0, 0, 0, 0,
+									components.Blanked(32, 32)),
 							),
 						))),
 			).WithPadding(8)))

@@ -10,6 +10,7 @@ type Type int
 
 const (
 	TypeUpdate Type = iota + 1
+	TypeTexture
 )
 
 type Envelope struct {
@@ -19,4 +20,9 @@ type Envelope struct {
 
 type Update struct {
 	Root components.WireNode `json:"root"`
+}
+
+type Texture struct {
+	ID   string `json:"id"`
+	Data string `json:"data"`
 }
