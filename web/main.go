@@ -25,6 +25,9 @@ type jsapi struct {
 	Root             components.Native
 	DevTools         bool
 	requiredTextures []string
+	overlays         []func()
+	textWidthCache   map[string]int
+	textWidthScale   int
 }
 
 func NewJSAPI() *jsapi {
@@ -53,8 +56,21 @@ func (j *jsapi) GetMousePos() (x, y int) {
 	return ret.Get("x").Int(), ret.Get("y").Int()
 }
 
+func (j *jsapi) GetMouseScroll() (dx, dy int) {
+	ret := j.wrap.Get("mouseScroll")
+	return ret.Get("dx").Int(), ret.Get("dy").Int()
+}
+
 func (j *jsapi) Clear() {
 	j.wrap.Call("clear")
+}
+
+func (j *jsapi) Scissor(x, y, w, h int) {
+	j.wrap.Call("scissor", x, y, w, h)
+}
+
+func (j *jsapi) PopScissor() {
+	j.wrap.Call("popScissor")
 }
 
 func (j *jsapi) RenderText(x, y int, text string, color color.Color) {
@@ -102,7 +118,12 @@ func (j *jsapi) GetTexSize(path string) (w, h int) {
 }
 
 func (j *jsapi) GuessTextWidth(text string) int {
-	return j.wrap.Call("guessTextWidth", text).Int()
+	if width, ok := j.textWidthCache[text]; ok {
+		return width
+	}
+	width := j.wrap.Call("guessTextWidth", text).Int()
+	j.textWidthCache[text] = width
+	return width
 }
 
 func (j *jsapi) GetLineHeight() int {
@@ -114,6 +135,10 @@ func (j *jsapi) totalRerender(this js.Value, args []js.Value) any {
 	return nil
 }
 
+func (j *jsapi) RenderOverlay(fn func()) {
+	j.overlays = append(j.overlays, fn)
+}
+
 func (j *jsapi) TotalRerender(reason string) {
 	slog.Info("Rerendering!")
 	j.Clear()
@@ -123,12 +148,20 @@ func (j *jsapi) TotalRerender(reason string) {
 
 	t := time.Now()
 	w, h := j.GetDimensions()
-	_ = j.Root.Measure(j, components.Size{W: w, H: h})
+	scale := j.wrap.Get("scale").Int()
+	if scale != j.textWidthScale {
+		j.textWidthScale = scale
+		j.textWidthCache = map[string]int{}
+	}
 	l := j.Root.Layout(j, components.Rect{X: 0, Y: 0, W: w, H: h})
 	tookLayout := time.Since(t).Nanoseconds()
 
 	t = time.Now()
 	j.Root.Render(j, l)
+	for _, fn := range j.overlays {
+		fn()
+	}
+	j.overlays = nil
 	tookRender := time.Since(t).Nanoseconds()
 
 	if j.requiredTextures != nil {
@@ -180,6 +213,7 @@ func main() {
 		panic(err)
 	}
 	defer ws.CloseNow()
+	ws.SetReadLimit(1024 * 1024) // 1MB
 
 	go func() {
 		for {

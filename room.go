@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/url"
+	"strconv"
 
 	"g.tizu.dev/CCWSUI/components"
 	"g.tizu.dev/CCWSUI/web/webmsg"
@@ -83,39 +84,68 @@ func getCoreRoomHome() *Room {
 	return NewRoom("home", "CCWSUI!",
 		components.Overlaid(
 			components.Expand(components.Textured("background", 0, 0, 0, 0, components.Filler())),
-			components.Padded(8, 8, 8, 8, components.HStacked(
+			components.HStacked(
+				components.Overlaid(components.Filler(), components.AlignedCenter(
+					components.Constrained(0, 197, components.Textured("stockkeeper", 20, 21, 17, 21,
+						components.VStacked(
+							components.Padded(3, 20, 4, 20,
+								components.AlignedCenter(
+									components.LiteralOf("Stock Keeper").
+										WithHexColor("#000000")),
+							),
+
+							components.ExpandV(
+								components.Padded(1, 22, 18, 22, components.Scrolling(
+									components.DirectionV, components.VStacked(
+										nineSlots(),
+										nineSlots(),
+										nineSlots(),
+										nineSlots(),
+										nineSlots(),
+										nineSlots(),
+										nineSlots(),
+										nineSlots(),
+										nineSlots(),
+										nineSlots(),
+										nineSlots(),
+										nineSlots(),
+										nineSlots(),
+										nineSlots(),
+										nineSlots(),
+										nineSlots(),
+										nineSlots(),
+										nineSlots(),
+										nineSlots(),
+										nineSlots(),
+										nineSlots(),
+										nineSlots(),
+										nineSlots()),
+								).SetStep(18))),
+						))),
+				)).RequireHover(true),
 				components.Expand(
 					components.AlignedCenter(
-						components.Constrained(100, 100,
-							components.Textured("stockkeeper", 20, 21, 17, 21,
-								components.VStacked(
+						components.Constrained(200, 0,
+							components.VStacked(
+								components.Textured("title", 2, 3, 2, 3,
 									components.Padded(3, 20, 3, 20,
 										components.AlignedCenter(
 											components.LiteralOf("Stock Keeper").
 												WithHexColor("#000000")),
 									),
+								).TintedHex("#cba6f7"),
 
-									components.Expand(components.Blanked(1, 1)),
-								),
-							)))),
-				components.Blanked(8, 0),
-				components.Textured("stockkeeper", 20, 21, 17, 21,
-					components.VStacked(
-						components.Padded(3, 20, 4, 20,
-							components.AlignedCenter(
-								components.LiteralOf("Stock Keeper").
-									WithHexColor("#000000")),
-						),
-
-						components.Padded(1, 22, 18, 22, components.VStacked(
-							nineSlots(),
-							nineSlots(),
-							nineSlots(),
-							nineSlots()),
-						),
-					),
-				),
-			))))
+								components.Padded(0, 2, 0, 2,
+									components.Textured("plain-inset", 1, 1, 1, 1,
+										components.Textured("checkerboard", 0, 0, 0, 0,
+											components.LiteralOf("Stock Keeper").WithHexColor("#cba6f7").WithShadow(true).
+												Add(" is a simple inventory management system that allows you to easily").
+												Add(" keep track of items!").WithHexColor("#cba6f7").
+												WithWrap(true).WithAlignment(components.AlignmentCenter),
+										)).SetPad(true)),
+							),
+						))),
+			).WithPadding(8)))
 	// components.AtRenderTime(func() components.Native {
 	// 	return components.AlignedCenter(
 	// 			components.VStacked(
@@ -163,10 +193,21 @@ func slot() components.Native {
 	count := rand.Intn(64) + 1
 	_ = count
 
-	return components.VStacked(
-		components.Textured("plain-inset", 1, 1, 1, 1, components.Padded(1, 1, 1, 1,
-			components.ItemTextured(item.Name()[:len(item.Name())-4]))),
-		// components.AbsoluteAt(-1, -1, components.LiteralOf(
-		// 	strconv.Itoa(count)).WithShadow()),
-	)
+	return components.Overlaid(
+		components.Overlaid(
+			components.Textured("plain-inset", 1, 1, 1, 1, components.Padded(1, 1, 1, 1,
+				components.ItemTextured(item.Name()[:len(item.Name())-4]))),
+			components.Aligned(components.AlignmentEnd, components.AlignmentEnd,
+				components.LiteralOf(strconv.Itoa(count)).WithShadow(true)),
+		),
+		components.FollowsMouse(components.AlignmentStart, components.AlignmentEnd,
+			components.Padded(0, 3, 0, 3,
+				components.Textured("tooltip", 2, 2, 2, 2,
+					components.Padded(3, 4, 4, 4,
+						components.LiteralOf(item.Name()[:len(item.Name())-4]+"\n"+"Count: "+strconv.Itoa(count)).
+							WithWrap(true).WithShadow(true)),
+				),
+			),
+		).FlipIfOverflowing(true),
+	).RequireHover(true)
 }

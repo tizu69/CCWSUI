@@ -3,18 +3,25 @@ package components
 import "encoding/json"
 
 type Expanded struct {
-	Child Native `json:"-"`
+	Child     Native `json:"-"`
+	Direction Direction
 }
 
 func init() {
 	RegisterWire("expanded", ExpandedFromWire)
 }
 
-func Expand(child Native) Expanded {
-	return Expanded{Child: child}
-}
+func Expand(child Native) Expanded  { return Expanded{Child: child, Direction: DirectionHV} }
+func ExpandH(child Native) Expanded { return Expanded{Child: child, Direction: DirectionH} }
+func ExpandV(child Native) Expanded { return Expanded{Child: child, Direction: DirectionV} }
 
 func (c Expanded) Measure(ctx MeasureContext, constraint Size) Size {
+	switch c.Direction {
+	case DirectionH:
+		constraint.H = c.Child.Measure(ctx, constraint).H
+	case DirectionV:
+		constraint.W = c.Child.Measure(ctx, constraint).W
+	}
 	return constraint
 }
 

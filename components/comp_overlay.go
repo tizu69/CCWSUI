@@ -39,12 +39,16 @@ func (c Overlay) Measure(ctx MeasureContext, constraint Size) Size {
 
 func (c Overlay) Layout(ctx LayoutContext, rect Rect) LayoutNode {
 	children := make([]LayoutNode, len(c.Layers))
-	for i, layer := range c.Layers {
-		children[i] = layer.Layout(ctx, rect)
+	if c.HoverRequired && !rect.Contains(ctx.GetMousePos()) {
+		children[0] = c.Layers[0].Layout(ctx, rect)
+	} else {
+		for i, layer := range c.Layers {
+			children[i] = layer.Layout(ctx, rect)
+		}
 	}
 	return LayoutNode{
 		Rect: rect, Title: fmt.Sprintf("Overlay (%dx)", len(c.Layers)),
-		Children: children, RerenderMove: c.HoverRequired,
+		Children: children,
 	}
 }
 

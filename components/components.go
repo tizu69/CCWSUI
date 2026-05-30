@@ -44,20 +44,38 @@ type Native interface {
 	ToWire() (WireNode, error)
 }
 
+type ClippedRenderer interface {
+	RenderClipped(ctx RenderContext, layout LayoutNode, clip Rect)
+}
+
 type MeasureContext interface {
 	GuessTextWidth(text string) int
 	GetLineHeight() int
 }
 
+type interactivityContext interface {
+	GetDimensions() (w, h int)
+	GetMousePos() (x, y int)
+	GetMouseScroll() (dx, dy int)
+}
+
 type LayoutContext interface {
 	MeasureContext
+	interactivityContext
 }
 
 type RenderContext interface {
 	MeasureContext
+	interactivityContext
 
-	GetDimensions() (w, h int)
-	GetMousePos() (x, y int)
+	// Until [PopScissor] is called, all rendering will be clipped to the
+	// given rectangle. Multiple calls to Scissor will intersect the scissor
+	// rectangle, and ClearScissor will clear them last-in-first-out.
+	//
+	// While scissoring, [GetMousePos] will return (-1, -1), as if the mouse
+	// were outside the window, if the mouse is outside the scissor rectangle.
+	Scissor(x, y, w, h int)
+	PopScissor()
 
 	RenderText(x, y int, text string, color color.Color)
 	RenderTex(x, y, w, h int, path string, sx, sy int)
@@ -69,6 +87,8 @@ type RenderContext interface {
 	// render pass is done. This is a no-op if the texture is already loaded.
 	// It should be called prior to any calls to Texture-related functions.
 	RequireTexture(path string)
+
+	RenderOverlay(func())
 }
 
 type Size struct {
@@ -83,10 +103,22 @@ func (rc Rect) Contains(x, y int) bool {
 	return x >= rc.X && x < rc.X+rc.W && y >= rc.Y && y < rc.Y+rc.H
 }
 
+func (rc Rect) Intersects(other Rect) bool {
+	return rc.X < other.X+other.W &&
+		rc.X+rc.W > other.X &&
+		rc.Y < other.Y+other.H &&
+		rc.Y+rc.H > other.Y
+}
+
 type LayoutNode struct {
 	Rect     Rect
 	Children []LayoutNode
 	Title    string
+}
 
-	RerenderMove bool // Rerender when the mouse is moved on top of this?
+func ifelse[T any](cond bool, a, b T) T {
+	if cond {
+		return a
+	}
+	return b
 }

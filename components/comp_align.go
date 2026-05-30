@@ -25,24 +25,12 @@ func (c Align) Measure(ctx MeasureContext, constraint Size) Size {
 
 func (c Align) Layout(ctx LayoutContext, rect Rect) LayoutNode {
 	childSize := c.Child.Measure(ctx, Size{W: rect.W, H: rect.H})
-	x := rect.X
-	y := rect.Y
-	switch c.X {
-	case AlignmentCenter:
-		x = rect.X + (rect.W-childSize.W)/2
-	case AlignmentEnd:
-		x = rect.X + (rect.W - childSize.W)
-	}
-	switch c.Y {
-	case AlignmentCenter:
-		y = rect.Y + (rect.H-childSize.H)/2
-	case AlignmentEnd:
-		y = rect.Y + (rect.H - childSize.H)
-	}
+	x := rect.X + int(float32(rect.W-childSize.W)*float32(c.X))
+	y := rect.Y + int(float32(rect.H-childSize.H)*float32(c.Y))
 	childRect := Rect{X: x, Y: y, W: childSize.W, H: childSize.H}
 	return LayoutNode{
 		Rect: rect, Children: []LayoutNode{c.Child.Layout(ctx, childRect)},
-		Title: fmt.Sprintf("Align (h=%s v=%s)", c.X, c.Y),
+		Title: fmt.Sprintf("Align (h=%v v=%v)", c.X, c.Y),
 	}
 }
 

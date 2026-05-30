@@ -21,10 +21,28 @@ window.ccwsui = {
 		throw new Error("Go wasm not initialized!");
 	},
 
+	_rerenderReason: "Initial render",
+	queueRerender(reason) {
+		if (!this._rerenderReason) this._rerenderReason = reason;
+	},
+	_lastRerenderTime: 0,
+	_rerenderAnimationFrame(time) {
+		requestAnimationFrame(this._rerenderAnimationFrame.bind(this));
+
+		if (!this._rerenderReason) return;
+		this.totalRerender(this._rerenderReason);
+		this._rerenderReason = null;
+
+		if (this.mouseScroll.dx || this.mouseScroll.dy)
+			this.mouseScroll = { dx: 0, dy: 0 };
+	},
+
 	/** @type {HTMLCanvasElement} */
 	canvas: document.getElementById("ccwsui-root"),
 
 	mousePos: { x: -1, y: -1 },
+	mouseScroll: { dx: 0, dy: 0 },
+	keysDown: new Set(),
 	async prepare() {
 		const font = new FontFace("CCWSUI", 'url("/static/font.ttf")');
 		await font.load();
@@ -36,33 +54,52 @@ window.ccwsui = {
 		window.addEventListener("resize", () => {
 			this.canvas.width = window.innerWidth;
 			this.canvas.height = window.innerHeight;
-			this.totalRerender("Resized");
+			this.ctx = this.canvas.getContext("2d");
+			this.queueRerender("Resized");
 		});
 		window.addEventListener("keydown", (e) => {
+			this.keysDown.add(e.key);
+			this.queueRerender("Key pressed");
 			if (!isDevtoolsShortcut(e)) return;
 			e.preventDefault();
 			this.openDevtools();
+		});
+		window.addEventListener("keyup", (e) => {
+			this.keysDown.delete(e.key);
+			this.queueRerender("Key released");
 		});
 		window.addEventListener("mousemove", (e) => {
 			this.mousePos = {
 				x: Math.floor(e.clientX / this.scale),
 				y: Math.floor(e.clientY / this.scale),
 			};
+			this.queueRerender("Mouse moved");
+		});
+		window.addEventListener("mouseout", () => {
+			this.mousePos = { x: -1, y: -1 };
+			this.queueRerender("Mouse left");
 		});
 		window.addEventListener(
 			"wheel",
 			(e) => {
-				if (!e.ctrlKey) return;
-				e.preventDefault();
-				// zooming
-				this.scale = Math.min(
-					7,
-					Math.max(1, this.scale + Math.sign(-e.deltaY)),
-				);
-				this.totalRerender("Zoomed");
+				if (e.ctrlKey) {
+					e.preventDefault();
+					// zooming
+					this.scale = Math.min(
+						7,
+						Math.max(1, this.scale + Math.sign(-e.deltaY)),
+					);
+					this.queueRerender("Zoomed");
+					return;
+				}
+
+				this.mouseScroll = { dx: e.deltaX, dy: e.deltaY };
+				this.queueRerender("Scrolled");
 			},
 			{ passive: false },
 		);
+
+		requestAnimationFrame(this._rerenderAnimationFrame.bind(this));
 	},
 
 	getDimensions() {
@@ -72,12 +109,60 @@ window.ccwsui = {
 		};
 	},
 	getMousePos() {
+		if (this.scissorStack) {
+			let valid = true;
+			for (const scissor of this.scissorStack)
+				if (
+					this.mousePos.x < scissor.x ||
+					this.mousePos.x > scissor.x + scissor.w ||
+					this.mousePos.y < scissor.y ||
+					this.mousePos.y > scissor.y + scissor.h
+				) {
+					valid = false;
+					break;
+				}
+			if (!valid) return { x: -1, y: -1 };
+		}
 		return this.mousePos;
+	},
+
+	scissorStack: [],
+	scissor(x, y, w, h) {
+		this.canvasContext.save();
+		this.canvasContext.beginPath();
+		this.canvasContext.rect(
+			this.scaled(x),
+			this.scaled(y),
+			this.scaled(w),
+			this.scaled(h),
+		);
+		this.canvasContext.clip();
+		this.scissorStack.push({ x, y, w, h });
+	},
+	popScissor() {
+		if (!this.scissorStack.length) throw new Error("No scissor to pop");
+		this.canvasContext.restore();
+		this.scissorStack.pop();
 	},
 
 	clear() {
 		const ctx = this.canvasContext;
 		ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+	},
+	isRectVisible(x, y, w, h) {
+		if (w <= 0 || h <= 0) return false;
+		const maxW = Math.floor(this.canvas.width / this.scale);
+		const maxH = Math.floor(this.canvas.height / this.scale);
+		if (x >= maxW || y >= maxH || x + w <= 0 || y + h <= 0) return false;
+		for (const scissor of this.scissorStack)
+			if (
+				x >= scissor.x + scissor.w ||
+				y >= scissor.y + scissor.h ||
+				x + w <= scissor.x ||
+				y + h <= scissor.y
+			)
+				return false;
+		return true;
 	},
 	renderText(x, y, text, color) {
 		const ctx = this.canvasContext;
@@ -93,7 +178,7 @@ window.ccwsui = {
 		return v;
 	},
 
-	/** @type {Record<string, HTMLImageElement>} */
+	/** @type {Record<string, HTMLCanvasElement>} */
 	textures: {},
 	async prepareTextures(...path) {
 		let anyAreNew = false;
@@ -101,13 +186,40 @@ window.ccwsui = {
 			path.map((p) => {
 				if (this.textures[p]) return;
 				anyAreNew = true;
+
+				const flags = {};
+				const [path, ...flagList] = p.split(";");
+				for (const flag of flagList) {
+					const [key, value] = flag.split("=");
+					flags[key] = value;
+				}
+
 				const img = new Image();
-				if (p.startsWith("@item/"))
-					img.src = `/static/item/${p.slice(6)}.png`;
-				else img.src = `/static/tex/${p}.png`;
+				if (path.startsWith("@item/"))
+					img.src = `/static/item/${path.slice(6)}.png`;
+				else img.src = `/static/tex/${path}.png`;
+
+				const canvas = document.createElement("canvas");
+				this.textures[p] = canvas;
 				return new Promise((resolve) => {
 					img.onload = () => {
-						this.textures[p] = img;
+						canvas.width = img.width;
+						canvas.height = img.height;
+
+						const ctx = canvas.getContext("2d");
+						ctx.imageSmoothingEnabled = false;
+						ctx.drawImage(img, 0, 0);
+
+						if (flags["tint"]) {
+							ctx.globalCompositeOperation = "multiply";
+							ctx.fillStyle = flags["tint"];
+							ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+							// apply the texture as a mask to keep transparency
+							ctx.globalCompositeOperation = "destination-in";
+							ctx.drawImage(img, 0, 0);
+						}
+
 						resolve();
 					};
 					img.onerror = () => {
@@ -117,12 +229,14 @@ window.ccwsui = {
 				});
 			}),
 		);
-		if (anyAreNew) this.totalRerender("Textures have loaded");
+		if (anyAreNew) this.queueRerender("Textures have loaded");
 	},
 	renderTex(x, y, w, h, path, sx, sy, sw = w, sh = h, nn = true) {
+		if (!this.isRectVisible(x, y, w, h)) return;
 		const ctx = this.canvasContext;
 		const img = this.textures[path];
 		if (!img) return;
+
 		ctx.imageSmoothingEnabled = !nn;
 		ctx.drawImage(
 			img,
@@ -138,7 +252,9 @@ window.ccwsui = {
 	},
 	/** @type {Record<string, CanvasPattern>} */
 	renderTexPatternCache: {},
+	renderTexPatternCacheSize: 0,
 	renderTexPattern(x, y, w, h, path, sx, sy, sw, sh) {
+		if (!this.isRectVisible(x, y, w, h)) return;
 		const ctx = this.canvasContext;
 		const img = this.textures[path];
 		if (!img) return;
@@ -172,9 +288,12 @@ window.ccwsui = {
 		const pattern = ctx.createPattern(subc, "repeat");
 		pattern.setTransform(new DOMMatrix([1, 0, 0, 1, scrx, scry]));
 
-		if (Object.keys(this.renderTexPatternCache).length >= 4096)
+		if (this.renderTexPatternCacheSize >= 4096) {
 			this.renderTexPatternCache = {};
+			this.renderTexPatternCacheSize = 0;
+		}
 		this.renderTexPatternCache[cacheKey] = pattern;
+		this.renderTexPatternCacheSize++;
 
 		ctx.fillStyle = pattern;
 		ctx.fillRect(scrx, scry, this.scaled(w), this.scaled(h));
@@ -186,15 +305,19 @@ window.ccwsui = {
 	},
 
 	get canvasContext() {
-		return this.canvas.getContext("2d");
+		return this.ctx || this.canvas.getContext("2d");
 	},
 	scaled(v) {
 		return Math.round(v) * this.scale;
 	},
 
 	devtoolsWindow: null,
+	tookLayoutValues: [],
+	tookDrawValues: [],
 	renderDevtools(reason, layoutJSON, tookLayout, tookDraw) {
 		const layout = JSON.parse(layoutJSON);
+		this.tookLayoutValues.push(tookLayout);
+		this.tookDrawValues.push(tookDraw);
 
 		document.getElementById("ccwsui-devtools")?.remove();
 
@@ -248,6 +371,18 @@ window.ccwsui = {
 		const ind = (s, ...args) =>
 			"  ".repeat(treeIndent) +
 			s.reduce((a, b, i) => a + args[i - 1] + b);
+
+		const dims = this.getDimensions();
+		treeText += ind`Built ${i} nodes at ${new Date().toTimeString().split(" ")[0]} `;
+		treeText += `(${reason})\n`;
+		treeText += ind`Last layout took ${(tookLayout / 1e6).toFixed(2)}ms `;
+		treeText += `(~${(this.tookLayoutValues.reduce((a, b) => a + b) / this.tookLayoutValues.length / 1e6).toFixed(2)}ms)\n`;
+		treeText += ind`Last rerender took ${(tookDraw / 1e6).toFixed(2)}ms `;
+		treeText += `(~${(this.tookDrawValues.reduce((a, b) => a + b) / this.tookDrawValues.length / 1e6).toFixed(2)}ms)\n`;
+		treeText += ind`Rendered at ${dims.w}x${dims.h}px`;
+		treeText += ` (${(tookDraw / (dims.w * dims.h)).toFixed(0)}ns/px)\n\n`;
+		treeIndent--;
+
 		function printTree(node) {
 			treeText += ind`${node.Title} {\n`;
 			treeIndent++;
@@ -261,16 +396,6 @@ window.ccwsui = {
 			treeIndent--;
 			treeText += ind`}\n`;
 		}
-
-		const dims = this.getDimensions();
-		treeText += ind`Built at ${new Date().toTimeString().split(" ")[0]} `;
-		treeText += `(${reason})\n`;
-		treeText += ind`Last layout took ${(tookLayout / 1e6).toFixed(2)}ms\n`;
-		treeText += ind`Last rerender took ${(tookDraw / 1e6).toFixed(2)}ms\n`;
-		treeText += ind`Rendered at ${dims.w}x${dims.h}px`;
-		treeText += ` (${(tookDraw / (dims.w * dims.h)).toFixed(0)}ns/px)\n\n`;
-		treeIndent--;
-
 		printTree(layout);
 
 		if (!this.devtoolsWindow || this.devtoolsWindow.closed) {

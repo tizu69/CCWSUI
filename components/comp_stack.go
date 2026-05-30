@@ -61,9 +61,8 @@ func (c Stack) Layout(ctx LayoutContext, rect Rect) LayoutNode {
 		fixedW := 0
 		totalRest := 0
 		for _, child := range c.Children {
-			rest := stackRest(child)
-			if rest > 0 {
-				totalRest += rest
+			if isStackRest(child) {
+				totalRest++
 				continue
 			}
 			cs := child.Measure(ctx, constraint)
@@ -74,8 +73,8 @@ func (c Stack) Layout(ctx LayoutContext, rect Rect) LayoutNode {
 		x := rect.X
 		for i, child := range c.Children {
 			w := 0
-			if rest := stackRest(child); rest > 0 {
-				w = remainingW * rest / totalRest
+			if isStackRest(child) {
+				w = remainingW / totalRest
 			} else {
 				w = child.Measure(ctx, constraint).W
 			}
@@ -90,9 +89,8 @@ func (c Stack) Layout(ctx LayoutContext, rect Rect) LayoutNode {
 		fixedH := 0
 		totalRest := 0
 		for _, child := range c.Children {
-			rest := stackRest(child)
-			if rest > 0 {
-				totalRest += rest
+			if isStackRest(child) {
+				totalRest++
 				continue
 			}
 			cs := child.Measure(ctx, constraint)
@@ -103,8 +101,8 @@ func (c Stack) Layout(ctx LayoutContext, rect Rect) LayoutNode {
 		y := rect.Y
 		for i, child := range c.Children {
 			h := 0
-			if rest := stackRest(child); rest > 0 {
-				h = remainingH * rest / totalRest
+			if isStackRest(child) {
+				h = remainingH / totalRest
 			} else {
 				h = child.Measure(ctx, constraint).H
 			}
@@ -123,8 +121,20 @@ func (c Stack) Layout(ctx LayoutContext, rect Rect) LayoutNode {
 }
 
 func (c Stack) Render(ctx RenderContext, layout LayoutNode) {
+	c.RenderClipped(ctx, layout, layout.Rect)
+}
+
+func (c Stack) RenderClipped(ctx RenderContext, layout LayoutNode, clip Rect) {
 	for i, child := range c.Children {
-		child.Render(ctx, layout.Children[i])
+		childLayout := layout.Children[i]
+		if !childLayout.Rect.Intersects(clip) {
+			continue
+		}
+		if clipped, ok := child.(ClippedRenderer); ok {
+			clipped.RenderClipped(ctx, childLayout, clip)
+			continue
+		}
+		child.Render(ctx, childLayout)
 	}
 }
 
@@ -160,9 +170,7 @@ func StackFromWire(n WireNode) (Native, error) {
 	return p, err
 }
 
-func stackRest(child Native) int {
-	if _, ok := child.(Expanded); ok {
-		return 1
-	}
-	return 0
+func isStackRest(child Native) bool {
+	_, ok := child.(Expanded)
+	return ok
 }

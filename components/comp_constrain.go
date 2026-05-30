@@ -19,24 +19,26 @@ func Constrained(w, h int, child Native) Constrain {
 }
 
 func (c Constrain) Measure(ctx MeasureContext, constraint Size) Size {
+	cw, ch := ifelse(c.W != 0, c.W, constraint.W), ifelse(c.H != 0, c.H, constraint.H)
 	child := c.Child.Measure(ctx, Size{
-		W: min(c.W, constraint.W),
-		H: min(c.H, constraint.H),
+		W: min(cw, constraint.W),
+		H: min(ch, constraint.H),
 	})
 	return Size{
-		W: min(child.W, c.W, constraint.W),
-		H: min(child.H, c.H, constraint.H),
+		W: min(child.W, cw, constraint.W),
+		H: min(child.H, ch, constraint.H),
 	}
 }
 
 func (c Constrain) Layout(ctx LayoutContext, rect Rect) LayoutNode {
+	cw, ch := ifelse(c.W != 0, c.W, rect.W), ifelse(c.H != 0, c.H, rect.H)
 	childRect := Rect{
-		X: rect.X, Y: rect.Y, W: min(c.W, rect.W), H: min(c.H, rect.H),
+		X: rect.X, Y: rect.Y, W: min(cw, rect.W), H: min(ch, rect.H),
 	}
 	return LayoutNode{
 		Rect:     rect,
 		Children: []LayoutNode{c.Child.Layout(ctx, childRect)},
-		Title:    fmt.Sprintf("Constrain (w=%d, h=%d)", c.W, c.H),
+		Title:    fmt.Sprintf("Constrain (w=%d h=%d)", cw, ch),
 	}
 }
 

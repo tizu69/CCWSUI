@@ -1,5 +1,13 @@
 package components
 
+type Direction string
+
+const (
+	DirectionH  Direction = "h"
+	DirectionV  Direction = "v"
+	DirectionHV Direction = "hv"
+)
+
 type StackDirection string
 
 const (
@@ -7,10 +15,10 @@ const (
 	StackDirectionV StackDirection = "v"
 )
 
-type Alignment string
+type Alignment float32
 
 const (
-	AlignmentStart  Alignment = "start"
-	AlignmentCenter Alignment = "center"
-	AlignmentEnd    Alignment = "end"
+	AlignmentStart  Alignment = 0
+	AlignmentCenter Alignment = .5
+	AlignmentEnd    Alignment = 1
 )

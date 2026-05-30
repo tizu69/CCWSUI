@@ -37,7 +37,7 @@ func (c Padding) Layout(ctx LayoutContext, rect Rect) LayoutNode {
 	return LayoutNode{
 		Rect:     rect,
 		Children: []LayoutNode{c.Child.Layout(ctx, childRect)},
-		Title: fmt.Sprintf("Padding (t=%d, l=%d, b=%d, r=%d)",
+		Title: fmt.Sprintf("Padding (t=%d l=%d b=%d r=%d)",
 			c.T, c.L, c.B, c.R),
 	}
 }

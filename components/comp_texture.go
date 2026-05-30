@@ -3,12 +3,14 @@ package components
 import (
 	"encoding/json"
 	"fmt"
+	"image/color"
 )
 
 type Texture struct {
 	Tex        string
 	T, L, B, R int
 	Child      Native `json:"-"`
+	Pad        bool
 }
 
 func Textured(tex string, t, l, b, r int, child Native) Texture {
@@ -19,14 +21,42 @@ func init() {
 	RegisterWire("texture", TextureFromWire)
 }
 
+func (c Texture) Tinted(tint color.RGBA) Texture {
+	c.Tex = fmt.Sprintf("%s;tint=#%02x%02x%02x%02x", c.Tex, tint.R, tint.G, tint.B, tint.A)
+	return c
+}
+
+func (c Texture) TintedHex(hex string) Texture {
+	return c.Tinted(colorFromHex(hex))
+}
+
+func (c Texture) SetPad(pad bool) Texture {
+	c.Pad = pad
+	return c
+}
+
 func (c Texture) Measure(ctx MeasureContext, constraint Size) Size {
+	if c.Pad {
+		child := c.Child.Measure(ctx, Size{
+			W: max(0, constraint.W-c.L-c.R),
+			H: max(0, constraint.H-c.T-c.B),
+		})
+		return Size{W: child.W + c.L + c.R, H: child.H + c.T + c.B}
+	}
 	return c.Child.Measure(ctx, constraint)
 }
 
 func (c Texture) Layout(ctx LayoutContext, rect Rect) LayoutNode {
+	childRect := rect
+	if c.Pad {
+		childRect = Rect{
+			X: rect.X + c.L, Y: rect.Y + c.T,
+			W: max(0, rect.W-c.L-c.R), H: max(0, rect.H-c.T-c.B),
+		}
+	}
 	return LayoutNode{
 		Rect:     rect,
-		Children: []LayoutNode{c.Child.Layout(ctx, rect)},
+		Children: []LayoutNode{c.Child.Layout(ctx, childRect)},
 		Title:    fmt.Sprintf("Texture (%s)", c.Tex),
 	}
 }
