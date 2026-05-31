@@ -163,7 +163,7 @@ func getCoreRoomHome() *Room {
 																Add(" is a simple inventory management system that allows you to easily").
 																Add(" keep track of all your items!").WithHexColor("#cba6f7").
 																WithWrap(true).WithAlignment(components.AlignmentCenter),
-														)))).TintedHex("#464242"),
+														)))),
 										).SetPad(true)).SetPad(true)),
 
 								components.Textured("title", 2, 3, 2, 3,
@@ -172,7 +172,7 @@ func getCoreRoomHome() *Room {
 											components.HStacked(
 												components.Overlaid(
 													components.Textured("plain-outset", 1, 1, 1, 1,
-														components.Icony("refresh").Flip(components.FlipX),
+														components.Icony("refresh").Flip(components.FlipX).TintedHex("#cba6f7"),
 													).SetPad(true),
 													components.FollowsMouse(components.AlignmentStart, components.AlignmentEnd,
 														components.Padded(0, 3, 0, 3,
@@ -187,7 +187,7 @@ func getCoreRoomHome() *Room {
 											),
 										),
 									),
-								).SetPad(true),
+								).SetPad(true).TintedHex("#c6c6c6"),
 							),
 						))),
 			).WithPadding(8)))

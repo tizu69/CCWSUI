@@ -189,7 +189,7 @@ window.ccwsui = {
 				if (this.textures[p]) return;
 				anyAreNew = true;
 
-				const flags = {};
+				let flags = {};
 				let [path, ...flagList] = p.split(";");
 				for (const flag of flagList) {
 					const [key, value] = flag.split("=");
@@ -210,9 +210,10 @@ window.ccwsui = {
 				const img = new Image();
 				if (path in this.userTextures)
 					img.src = `data:image/png;base64,${this.userTextures[path]}`;
-				else if (path.startsWith("@item/"))
+				else if (path.startsWith("@item/")) {
 					img.src = `/static/item/${path.slice(6)}.png`;
-				else if (path.startsWith("@icon/"))
+					flags = {}; // TODO: do we want items to be processed?
+				} else if (path.startsWith("@icon/"))
 					img.src = `/static/icon/${path.slice(6)}.png`;
 				else img.src = `/static/tex/${path}.png`;
 
@@ -220,12 +221,14 @@ window.ccwsui = {
 				this.textures[p] = canvas;
 				return new Promise((resolve) => {
 					img.onload = () => {
-						canvas.width = img.width;
+						canvas.width = p.startsWith("@item/")
+							? img.width // icons don't need a sidecar texture
+							: img.width / 2;
 						canvas.height = img.height;
 
 						const proccanvas = document.createElement("canvas");
-						proccanvas.width = img.width;
-						proccanvas.height = img.height;
+						proccanvas.width = canvas.width;
+						proccanvas.height = canvas.height;
 						const ctx = proccanvas.getContext("2d");
 						ctx.imageSmoothingEnabled = false;
 						ctx.drawImage(img, 0, 0);
@@ -244,14 +247,6 @@ window.ccwsui = {
 							);
 							const data = imageData.data;
 							for (let i = 0; i < data.length; i += 4) {
-								console.log(
-									data[i],
-									data[i + 1],
-									data[i + 2],
-									data[i + 3],
-									srcColor,
-									dstColor,
-								);
 								if (
 									data[i] === srcColor.r &&
 									data[i + 1] === srcColor.g &&
@@ -265,16 +260,48 @@ window.ccwsui = {
 								}
 							}
 							ctx.putImageData(imageData, 0, 0);
-							console.log(`Replaced ${src} with ${dst} in ${p}`);
 						}
 						if (flags["tint"]) {
-							ctx.globalCompositeOperation = "multiply";
-							ctx.fillStyle = flags["tint"];
-							ctx.fillRect(0, 0, canvas.width, canvas.height);
+							const { r, g, b } = this.hexToRgba(flags["tint"]);
+							const imageData = ctx.getImageData(
+								0,
+								0,
+								canvas.width,
+								canvas.height,
+							);
+							const data = imageData.data;
 
-							// apply the texture as a mask to keep transparency
-							ctx.globalCompositeOperation = "destination-in";
-							ctx.drawImage(img, 0, 0);
+							const sccanvas = document.createElement("canvas");
+							sccanvas.width = img.width / 2;
+							sccanvas.height = img.height;
+							const scctx = sccanvas.getContext("2d");
+							scctx.imageSmoothingEnabled = false;
+							scctx.drawImage(img, -img.width / 2, 0);
+							const scdata = scctx.getImageData(
+								0,
+								0,
+								sccanvas.width,
+								sccanvas.height,
+							).data;
+							for (let i = 0; i < data.length; i += 4) {
+								// red channel defines tint strength
+								// 1-126 -> darker
+								// 127 -> exact same color
+								// 128-255 -> lighter
+								const v = scdata[i] / 127;
+								if (v === 0) continue;
+								if (v < 1) {
+									data[i] = r * v;
+									data[i + 1] = g * v;
+									data[i + 2] = b * v;
+								} else {
+									data[i] = r + (255 - r) * (v - 1);
+									data[i + 1] = g + (255 - g) * (v - 1);
+									data[i + 2] = b + (255 - b) * (v - 1);
+								}
+							}
+
+							ctx.putImageData(imageData, 0, 0);
 						}
 						if (flags["shadow"]) {
 							const imageData = ctx.getImageData(
