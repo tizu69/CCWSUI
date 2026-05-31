@@ -22,12 +22,22 @@ func init() {
 }
 
 func (c Texture) Tinted(tint color.RGBA) Texture {
-	c.Tex = fmt.Sprintf("%s;tint=#%02x%02x%02x%02x", c.Tex, tint.R, tint.G, tint.B, tint.A)
+	c.Tex += fmt.Sprintf(";tint=#%02x%02x%02x%02x", tint.R, tint.G, tint.B, tint.A)
 	return c
 }
 
 func (c Texture) TintedHex(hex string) Texture {
 	return c.Tinted(colorFromHex(hex))
+}
+
+func (c Texture) Remap(src, dst color.RGBA) Texture {
+	c.Tex += fmt.Sprintf(";#%02x%02x%02x%02x=#%02x%02x%02x%02x",
+		src.R, src.G, src.B, src.A, dst.R, dst.G, dst.B, dst.A)
+	return c
+}
+
+func (c Texture) RemapHex(src, dst string) Texture {
+	return c.Remap(colorFromHex(src), colorFromHex(dst))
 }
 
 func (c Texture) SetPad(pad bool) Texture {

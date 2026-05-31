@@ -22,3 +22,20 @@ const (
 	AlignmentCenter Alignment = .5
 	AlignmentEnd    Alignment = 1
 )
+
+type Rotation int
+
+const (
+	RotationU Rotation = 0
+	RotationR Rotation = 90
+	RotationD Rotation = 180
+	RotationL Rotation = 270
+)
+
+type Flip string
+
+const (
+	FlipNone Flip = ""
+	FlipX    Flip = "x"
+	FlipY    Flip = "y"
+)

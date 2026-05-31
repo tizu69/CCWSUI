@@ -26,7 +26,7 @@ window.ccwsui = {
 		if (!this._rerenderReason) this._rerenderReason = reason;
 	},
 	_lastRerenderTime: 0,
-	_rerenderAnimationFrame(time) {
+	_rerenderAnimationFrame() {
 		requestAnimationFrame(this._rerenderAnimationFrame.bind(this));
 
 		if (!this._rerenderReason) return;
@@ -193,7 +193,18 @@ window.ccwsui = {
 				let [path, ...flagList] = p.split(";");
 				for (const flag of flagList) {
 					const [key, value] = flag.split("=");
-					flags[key] = value;
+					flags[key] = value || true;
+				}
+
+				if (path.startsWith("#")) {
+					const canvas = document.createElement("canvas");
+					canvas.width = 1;
+					canvas.height = 1;
+					const ctx = canvas.getContext("2d");
+					ctx.fillStyle = path;
+					ctx.fillRect(0, 0, 1, 1);
+					this.textures[p] = canvas;
+					return Promise.resolve();
 				}
 
 				const img = new Image();
@@ -201,6 +212,8 @@ window.ccwsui = {
 					img.src = `data:image/png;base64,${this.userTextures[path]}`;
 				else if (path.startsWith("@item/"))
 					img.src = `/static/item/${path.slice(6)}.png`;
+				else if (path.startsWith("@icon/"))
+					img.src = `/static/icon/${path.slice(6)}.png`;
 				else img.src = `/static/tex/${path}.png`;
 
 				const canvas = document.createElement("canvas");
@@ -210,10 +223,50 @@ window.ccwsui = {
 						canvas.width = img.width;
 						canvas.height = img.height;
 
-						const ctx = canvas.getContext("2d");
+						const proccanvas = document.createElement("canvas");
+						proccanvas.width = img.width;
+						proccanvas.height = img.height;
+						const ctx = proccanvas.getContext("2d");
 						ctx.imageSmoothingEnabled = false;
 						ctx.drawImage(img, 0, 0);
 
+						for (const src in flags) {
+							if (!src.startsWith("#")) continue;
+							const dst = flags[src];
+
+							const srcColor = this.hexToRgba(src);
+							const dstColor = this.hexToRgba(dst);
+							const imageData = ctx.getImageData(
+								0,
+								0,
+								canvas.width,
+								canvas.height,
+							);
+							const data = imageData.data;
+							for (let i = 0; i < data.length; i += 4) {
+								console.log(
+									data[i],
+									data[i + 1],
+									data[i + 2],
+									data[i + 3],
+									srcColor,
+									dstColor,
+								);
+								if (
+									data[i] === srcColor.r &&
+									data[i + 1] === srcColor.g &&
+									data[i + 2] === srcColor.b &&
+									data[i + 3] === srcColor.a
+								) {
+									data[i] = dstColor.r;
+									data[i + 1] = dstColor.g;
+									data[i + 2] = dstColor.b;
+									data[i + 3] = dstColor.a;
+								}
+							}
+							ctx.putImageData(imageData, 0, 0);
+							console.log(`Replaced ${src} with ${dst} in ${p}`);
+						}
 						if (flags["tint"]) {
 							ctx.globalCompositeOperation = "multiply";
 							ctx.fillStyle = flags["tint"];
@@ -223,6 +276,41 @@ window.ccwsui = {
 							ctx.globalCompositeOperation = "destination-in";
 							ctx.drawImage(img, 0, 0);
 						}
+						if (flags["shadow"]) {
+							const imageData = ctx.getImageData(
+								0,
+								0,
+								canvas.width,
+								canvas.height,
+							);
+							const data = imageData.data;
+							for (let i = 0; i < data.length; i += 4) {
+								data[i] = data[i] / 4;
+								data[i + 1] = data[i + 1] / 4;
+								data[i + 2] = data[i + 2] / 4;
+							}
+							ctx.putImageData(imageData, 0, 0);
+						}
+
+						const fctx = canvas.getContext("2d");
+						fctx.imageSmoothingEnabled = false;
+						fctx.save();
+						fctx.translate(canvas.width / 2, canvas.height / 2);
+						if (flags["rotate"]) {
+							const angle = (+flags["rotate"] * Math.PI) / 180;
+							fctx.rotate(angle);
+						}
+						if (flags["flip"] === "x") {
+							fctx.scale(-1, 1);
+						} else if (flags["flip"] === "y") {
+							fctx.scale(1, -1);
+						}
+						fctx.drawImage(
+							proccanvas,
+							-proccanvas.width / 2,
+							-proccanvas.height / 2,
+						);
+						fctx.restore();
 
 						resolve();
 					};
@@ -318,8 +406,9 @@ window.ccwsui = {
 	devtoolsWindow: null,
 	tookLayoutValues: [],
 	tookDrawValues: [],
-	renderDevtools(reason, layoutJSON, tookLayout, tookDraw) {
+	renderDevtools(reason, layoutJSON, tookLayout, tookDraw, cctxJSON) {
 		const layout = JSON.parse(layoutJSON);
+		const cctx = JSON.parse(cctxJSON);
 		this.tookLayoutValues.push(tookLayout);
 		this.tookDrawValues.push(tookDraw);
 
@@ -387,6 +476,7 @@ window.ccwsui = {
 		treeText += ` (${(tookDraw / (dims.w * dims.h)).toFixed(0)}ns/px)\n\n`;
 		treeIndent--;
 
+		treeText += "Context " + JSON.stringify(cctx, null, 2) + "\n\n";
 		function printTree(node) {
 			treeText += ind`${node.Title} {\n`;
 			treeIndent++;
@@ -439,6 +529,14 @@ window.ccwsui = {
 	closeDevtools() {
 		document.getElementById("ccwsui-devtools")?.remove();
 		this.devtoolsWindow?.close();
+	},
+
+	hexToRgba(hex) {
+		const r = parseInt(hex.slice(1, 3), 16);
+		const g = parseInt(hex.slice(3, 5), 16);
+		const b = parseInt(hex.slice(5, 7), 16);
+		const a = parseInt(hex.slice(7, 9), 16) || 255;
+		return { r, g, b, a };
 	},
 };
 

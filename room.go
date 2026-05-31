@@ -113,7 +113,7 @@ func getCoreRoomHome() *Room {
 
 							components.ExpandV(
 								components.Padded(1, 22, 18, 22, components.Scrolling(
-									components.DirectionV, components.VStacked(
+									"stockkeeper", components.DirectionV, components.VStacked(
 										nineSlots(),
 										nineSlots(),
 										nineSlots(),
@@ -153,17 +153,41 @@ func getCoreRoomHome() *Room {
 								).TintedHex("#cba6f7"),
 
 								components.Padded(0, 2, 0, 2,
-									components.Textured("plain-inset", 1, 1, 1, 1,
-										components.Textured("checkerboard", 0, 0, 0, 0,
-											components.LiteralOf("Stock Keeper").WithHexColor("#cba6f7").WithShadow(true).
-												Add(" is a simple inventory management system that allows you to easily").
-												Add(" keep track of items!").WithHexColor("#cba6f7").
-												WithWrap(true).WithAlignment(components.AlignmentCenter),
-										)).SetPad(true)),
+									components.Textured("black", 0, 1, 0, 1,
+										components.Textured("sided-inset", 1, 1, 1, 1,
+											components.Textured("checkerboard", 0, 0, 0, 0,
+												components.Padded(6, 18, 6, 18,
+													components.Textured("content-inset", 2, 2, 2, 2,
+														components.Padded(8, 8, 8, 8,
+															components.LiteralOf("Stock Keeper").WithHexColor("#cba6f7").WithShadow(true).
+																Add(" is a simple inventory management system that allows you to easily").
+																Add(" keep track of all your items!").WithHexColor("#cba6f7").
+																WithWrap(true).WithAlignment(components.AlignmentCenter),
+														)))).TintedHex("#464242"),
+										).SetPad(true)).SetPad(true)),
 
-								components.Blanked(32, 32),
-								components.Textured("externallyloaded", 0, 0, 0, 0,
-									components.Blanked(32, 32)),
+								components.Textured("title", 2, 3, 2, 3,
+									components.Padded(2, 2, 2, 2,
+										components.AlignedX(components.AlignmentEnd,
+											components.HStacked(
+												components.Overlaid(
+													components.Textured("plain-outset", 1, 1, 1, 1,
+														components.Icony("refresh").Flip(components.FlipX),
+													).SetPad(true),
+													components.FollowsMouse(components.AlignmentStart, components.AlignmentEnd,
+														components.Padded(0, 3, 0, 3,
+															components.Textured("tooltip", 2, 2, 2, 2,
+																components.Padded(3, 4, 4, 4,
+																	components.LiteralOf("Refresh"),
+																),
+															),
+														),
+													).FlipIfOverflowing(true),
+												).RequireHover(true),
+											),
+										),
+									),
+								).SetPad(true),
 							),
 						))),
 			).WithPadding(8)))

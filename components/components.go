@@ -51,6 +51,7 @@ type ClippedRenderer interface {
 type MeasureContext interface {
 	GuessTextWidth(text string) int
 	GetLineHeight() int
+	GetTexSize(path string) (x, y int)
 }
 
 type interactivityContext interface {
