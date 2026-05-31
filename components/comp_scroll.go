@@ -6,28 +6,27 @@ import (
 )
 
 type Scroll struct {
-	Direction  Direction
-	Step, X, Y int
-	Child      Native `json:"-"`
+	ID        string
+	Direction Direction
+	Step      int
+	Child     Native `json:"-"`
 }
 
 func init() {
 	RegisterWire("scroll", ScrollFromWire)
 }
 
-func Scrolling(direction Direction, child Native) *Scroll {
-	return &Scroll{Direction: direction, Child: child, Step: 8}
+func Scrolling(id string, direction Direction, child Native) Scroll {
+	return Scroll{ID: id, Direction: direction, Child: child, Step: 8}
 }
 
-func (c Scroll) SetStep(step int) *Scroll {
+type scrollCtx struct {
+	X, Y int
+}
+
+func (c Scroll) SetStep(step int) Scroll {
 	c.Step = step
-	return &c
-}
-
-func (c Scroll) SetCurrent(x, y int) *Scroll {
-	c.X = x
-	c.Y = y
-	return &c
+	return c
 }
 
 func (c Scroll) Measure(ctx MeasureContext, constraint Size) Size {
@@ -45,20 +44,23 @@ func (c Scroll) Measure(ctx MeasureContext, constraint Size) Size {
 	}
 }
 
-func (c *Scroll) Layout(ctx LayoutContext, rect Rect) LayoutNode {
+func (c Scroll) Layout(ctx LayoutContext, rect Rect) LayoutNode {
 	childSize := c.Child.Measure(ctx, Size{W: rect.W, H: rect.H})
+
+	cctx := &scrollCtx{}
+	ctx.UseContext(c.ID, &cctx)
 
 	if rect.Contains(ctx.GetMousePos()) {
 		dx, dy := ctx.GetMouseScroll()
 		dx, dy = sign(dx, c.Step), sign(dy, c.Step)
 		if dx != 0 || dy != 0 {
-			c.X = max(min(c.X+dx, childSize.W-rect.W), 0)
-			c.Y = max(min(c.Y+dy, childSize.H-rect.H), 0)
+			cctx.X = max(min(cctx.X+dx, childSize.W-rect.W), 0)
+			cctx.Y = max(min(cctx.Y+dy, childSize.H-rect.H), 0)
 		}
 	}
 
 	childRect := Rect{
-		X: rect.X - c.X, Y: rect.Y - c.Y, W: childSize.W, H: childSize.H,
+		X: rect.X - cctx.X, Y: rect.Y - cctx.Y, W: childSize.W, H: childSize.H,
 	}
 	return LayoutNode{
 		Rect:     rect,
@@ -67,7 +69,7 @@ func (c *Scroll) Layout(ctx LayoutContext, rect Rect) LayoutNode {
 	}
 }
 
-func (c *Scroll) Render(ctx RenderContext, layout LayoutNode) {
+func (c Scroll) Render(ctx RenderContext, layout LayoutNode) {
 	ctx.Scissor(layout.Rect.X, layout.Rect.Y, layout.Rect.W, layout.Rect.H)
 	childLayout := layout.Children[0]
 	if clipped, ok := c.Child.(ClippedRenderer); ok {

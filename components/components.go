@@ -57,6 +57,17 @@ type interactivityContext interface {
 	GetDimensions() (w, h int)
 	GetMousePos() (x, y int)
 	GetMouseScroll() (dx, dy int)
+
+	// UseContext assigns the context value for the given id to v. If there is
+	// no context value for the given id, v will be kept unchanged, so you
+	// should initialize it to a sensible default. v must be a pointer to a
+	// pointer to a value of the type you want to retrieve. You may
+	// update it in-place and it will be saved for the next redraw cycle.
+	//
+	//	cctx := &scrollCtx{X: 0, Y: 0}
+	//	ctx.UseContext("scrollcontainer", &cctx)
+	//	cctx.X += 10 // persisted!
+	UseContext(id string, v any)
 }
 
 type LayoutContext interface {

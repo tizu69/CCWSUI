@@ -9,6 +9,7 @@ import (
 	"image/color"
 	"log/slog"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"syscall/js"
@@ -28,10 +29,14 @@ type jsapi struct {
 	overlays         []func()
 	textWidthCache   map[string]int
 	textWidthScale   int
+	context          map[string]any
 }
 
 func NewJSAPI() *jsapi {
-	j := &jsapi{wrap: js.Global().Get("ccwsui")}
+	j := &jsapi{
+		wrap:    js.Global().Get("ccwsui"),
+		context: make(map[string]any),
+	}
 
 	j.wrap.Set("totalRerender", js.FuncOf(j.totalRerender))
 	j.wrap.Set("openDevtools", js.FuncOf(j.openDevtools))
@@ -63,6 +68,23 @@ func (j *jsapi) GetMouseScroll() (dx, dy int) {
 
 func (j *jsapi) Clear() {
 	j.wrap.Call("clear")
+}
+
+func (j *jsapi) UseContext(id string, v any) {
+	pv := reflect.ValueOf(v)
+	inner := pv.Elem()
+
+	known, ok := j.context[id]
+	if !ok {
+		j.context[id] = inner.Interface()
+		return
+	}
+
+	kv := reflect.ValueOf(known)
+	if inner.Elem().Type() != kv.Elem().Type() {
+		panic(fmt.Sprintf("context %q already exists with different type %T", id, known))
+	}
+	inner.Set(kv)
 }
 
 func (j *jsapi) Scissor(x, y, w, h int) {
@@ -171,7 +193,8 @@ func (j *jsapi) TotalRerender(reason string) {
 
 	if j.DevTools {
 		b, _ := json.Marshal(l)
-		j.wrap.Call("renderDevtools", reason, string(b), tookLayout, tookRender)
+		b2, _ := json.Marshal(j.context)
+		j.wrap.Call("renderDevtools", reason, string(b), tookLayout, tookRender, string(b2))
 	}
 }
 
