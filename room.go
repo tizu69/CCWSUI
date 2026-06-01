@@ -100,51 +100,15 @@ func getCoreRooms() map[string]*Room {
 func getCoreRoomHome() *Room {
 	return NewRoom("home", "CCWSUI!",
 		components.Overlaid(
-			components.Expand(components.Textured("background", 0, 0, 0, 0, components.Filler())),
+			components.Expand(components.Textured("background", components.Filler())),
 			components.HStacked(
-				components.Overlaid(components.Filler(), components.AlignedCenter(
-					components.Constrained(0, 197, components.Textured("stockkeeper", 20, 21, 17, 21,
-						components.VStacked(
-							components.Padded(3, 20, 4, 20,
-								components.AlignedCenter(
-									components.LiteralOf("Stock Keeper").
-										WithHexColor("#000000")),
-							),
-
-							components.ExpandV(
-								components.Padded(1, 22, 18, 22, components.Scrolling(
-									"stockkeeper", components.DirectionV, components.VStacked(
-										nineSlots(),
-										nineSlots(),
-										nineSlots(),
-										nineSlots(),
-										nineSlots(),
-										nineSlots(),
-										nineSlots(),
-										nineSlots(),
-										nineSlots(),
-										nineSlots(),
-										nineSlots(),
-										nineSlots(),
-										nineSlots(),
-										nineSlots(),
-										nineSlots(),
-										nineSlots(),
-										nineSlots(),
-										nineSlots(),
-										nineSlots(),
-										nineSlots(),
-										nineSlots(),
-										nineSlots(),
-										nineSlots()),
-								).SetStep(18))),
-						))),
-				)).RequireHover(true),
+				stockkeeper(),
+				stockkeeper(),
 				components.Expand(
 					components.AlignedCenter(
 						components.Constrained(200, 0,
 							components.VStacked(
-								components.Textured("title", 2, 3, 2, 3,
+								components.Textured("title",
 									components.Padded(3, 20, 3, 20,
 										components.AlignedCenter(
 											components.LiteralOf("Stock Keeper").
@@ -153,77 +117,86 @@ func getCoreRoomHome() *Room {
 								).TintedHex("#cba6f7"),
 
 								components.Padded(0, 2, 0, 2,
-									components.Textured("black", 0, 1, 0, 1,
-										components.Textured("sided-inset", 1, 1, 1, 1,
-											components.Textured("checkerboard", 0, 0, 0, 0,
-												components.Padded(6, 18, 6, 18,
-													components.Textured("content-inset", 2, 2, 2, 2,
-														components.Padded(8, 8, 8, 8,
-															components.LiteralOf("Stock Keeper").WithHexColor("#cba6f7").WithShadow(true).
-																Add(" is a simple inventory management system that allows you to easily").
-																Add(" keep track of all your items!").WithHexColor("#cba6f7").
-																WithWrap(true).WithAlignment(components.AlignmentCenter),
-														)))),
-										).SetPad(true)).SetPad(true)),
+									components.Textured("#000",
+										components.Padded(0, 1, 0, 1,
+											components.Textured("sided-inset",
+												components.Textured("checkerboard",
+													components.Padded(6, 18, 6, 18,
+														components.Textured("content-inset",
+															components.Padded(8, 8, 8, 8,
+																components.LiteralOf("Stock Keeper").WithHexColor("#cba6f7").WithShadow(true).
+																	Add(" is a simple inventory management system that allows you to easily").
+																	Add(" keep track of all your items!").WithHexColor("#cba6f7").
+																	WithWrap(true).WithAlignment(components.AlignmentCenter),
+															)))),
+											).SetPad(true)))),
 
-								components.Textured("title", 2, 3, 2, 3,
+								components.Textured("title",
 									components.Padded(2, 2, 2, 2,
 										components.AlignedX(components.AlignmentEnd,
 											components.HStacked(
 												components.Overlaid(
-													components.Textured("plain-outset", 1, 1, 1, 1,
-														components.Icony("refresh").Flip(components.FlipX).TintedHex("#cba6f7"),
+													components.Textured("plain-outset",
+														components.Icony("cross").Flip(components.FlipX).TintedHex("#f38ba8"),
 													).SetPad(true),
 													components.FollowsMouse(components.AlignmentStart, components.AlignmentEnd,
 														components.Padded(0, 3, 0, 3,
-															components.Textured("tooltip", 2, 2, 2, 2,
+															components.Textured("tooltip",
 																components.Padded(3, 4, 4, 4,
-																	components.LiteralOf("Refresh"),
+																	components.LiteralOf("Abort now"),
 																),
-															),
+															).TintedHex("#f38ba8"),
 														),
 													).FlipIfOverflowing(true),
 												).RequireHover(true),
 											),
 										),
 									),
-								).SetPad(true).TintedHex("#c6c6c6"),
+								).SetPad(true),
 							),
 						))),
 			).WithPadding(8)))
-	// components.AtRenderTime(func() components.Native {
-	// 	return components.AlignedCenter(
-	// 			components.VStacked(
-	// 				components.AlignedCenter(
-	// 					components.Padded(3, 20, 3, 20,
-	// 						components.LiteralOf("Stock Keeper").
-	// 							WithColor("#000000"),
-	// 					)),
+}
 
-	// 				components.Padded(0, 20, 16, 20,
-	// 					components.Clickable("awa", components.LiteralOf(strconv.Itoa(rand.Int()))),
-	// 				),
+func stockkeeper() components.Native {
+	return components.AlignedCenter(
+		components.Constrained(0, 197, components.Textured("stockkeeper",
+			components.VStacked(
+				components.Padded(3, 20, 4, 20,
+					components.AlignedCenter(
+						components.LiteralOf("Stock Keeper").
+							WithHexColor("#000000")),
+				),
 
-	// 				components.Padded(0, 22, 18, 22, components.VStacked(
-	// 					nineSlots(),
-	// 					nineSlots(),
-	// 					nineSlots(),
-	// 					nineSlots()),
-	// 				),
-
-	// 				components.Padded(0, 22, 18, 22,
-	// 					components.HStacked(
-	// 						slot(),
-	// 						components.Textured("lineguide-inset", 4, 1, 4, 1,
-	// 							components.Padded(3, 3, 4, 3,
-	// 								components.Inputable("search", "Foo Bar!")),
-	// 						).WithPadBorder(false),
-	// 					).WithPadding(4),
-	// 				),
-	// 			),
-	// 		).WithPadBorder(false),
-	// 	)
-	// }))
+				components.ExpandV(
+					components.Padded(1, 22, 18, 22, components.Scrolling(
+						"stockkeeper", components.DirectionV, components.VStacked(
+							nineSlots(),
+							nineSlots(),
+							nineSlots(),
+							nineSlots(),
+							nineSlots(),
+							nineSlots(),
+							nineSlots(),
+							nineSlots(),
+							nineSlots(),
+							nineSlots(),
+							nineSlots(),
+							nineSlots(),
+							nineSlots(),
+							nineSlots(),
+							nineSlots(),
+							nineSlots(),
+							nineSlots(),
+							nineSlots(),
+							nineSlots(),
+							nineSlots(),
+							nineSlots(),
+							nineSlots(),
+							nineSlots()),
+					).SetStep(18))),
+			))),
+	)
 }
 
 func nineSlots() components.Native {
@@ -240,14 +213,14 @@ func slot() components.Native {
 
 	return components.Overlaid(
 		components.Overlaid(
-			components.Textured("plain-inset", 1, 1, 1, 1, components.Padded(1, 1, 1, 1,
+			components.Textured("plain-inset", components.Padded(1, 1, 1, 1,
 				components.ItemTextured(item.Name()[:len(item.Name())-4]))),
 			components.Aligned(components.AlignmentEnd, components.AlignmentEnd,
 				components.LiteralOf(strconv.Itoa(count)).WithShadow(true)),
 		),
 		components.FollowsMouse(components.AlignmentStart, components.AlignmentEnd,
 			components.Padded(0, 3, 0, 3,
-				components.Textured("tooltip", 2, 2, 2, 2,
+				components.Textured("tooltip",
 					components.Padded(3, 4, 4, 4,
 						components.LiteralOf(item.Name()[:len(item.Name())-4]+"\n"+"Count: "+strconv.Itoa(count)).
 							WithWrap(true).WithShadow(true)),

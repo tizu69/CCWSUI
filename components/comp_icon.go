@@ -43,7 +43,7 @@ func (c Icon) SetShadow(v bool) Icon {
 
 func (c Icon) Measure(ctx MeasureContext, constraint Size) Size {
 	w, h := ctx.GetTexSize("@icon/" + c.Icon)
-	return Size{W: max(w, 1), H: max(h, 1)}
+	return Size{W: w, H: h}
 }
 
 func (c Icon) Layout(ctx LayoutContext, rect Rect) LayoutNode {

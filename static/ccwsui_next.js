@@ -182,6 +182,8 @@ window.ccwsui = {
 	textures: {},
 	/** @type {Record<string, string>} */
 	userTextures: {},
+	/** @type {Record<string, {t: number,  l: number, b: number, r: number}>} */
+	textureBorders: {},
 	async prepareTextures(...path) {
 		let anyAreNew = false;
 		await Promise.all(
@@ -233,6 +235,19 @@ window.ccwsui = {
 						ctx.imageSmoothingEnabled = false;
 						ctx.drawImage(img, 0, 0);
 
+						const sccanvas = document.createElement("canvas");
+						sccanvas.width = img.width / 2;
+						sccanvas.height = img.height;
+						const scctx = sccanvas.getContext("2d");
+						scctx.imageSmoothingEnabled = false;
+						scctx.drawImage(img, -img.width / 2, 0);
+						const scdata = scctx.getImageData(
+							0,
+							0,
+							sccanvas.width,
+							sccanvas.height,
+						).data;
+
 						for (const src in flags) {
 							if (!src.startsWith("#")) continue;
 							const dst = flags[src];
@@ -270,19 +285,6 @@ window.ccwsui = {
 								canvas.height,
 							);
 							const data = imageData.data;
-
-							const sccanvas = document.createElement("canvas");
-							sccanvas.width = img.width / 2;
-							sccanvas.height = img.height;
-							const scctx = sccanvas.getContext("2d");
-							scctx.imageSmoothingEnabled = false;
-							scctx.drawImage(img, -img.width / 2, 0);
-							const scdata = scctx.getImageData(
-								0,
-								0,
-								sccanvas.width,
-								sccanvas.height,
-							).data;
 							for (let i = 0; i < data.length; i += 4) {
 								// red channel defines tint strength
 								// 1-126 -> darker
@@ -318,6 +320,38 @@ window.ccwsui = {
 							}
 							ctx.putImageData(imageData, 0, 0);
 						}
+
+						let t = 0,
+							l = 0,
+							b = 0,
+							r = 0;
+						const borderpoints = [];
+						for (let i = 0; i < scdata.length; i += 4)
+							if (scdata[i + 1] & 64)
+								borderpoints.push({
+									x: (i / 4) % canvas.width,
+									y: Math.floor(i / 4 / canvas.width),
+								});
+						if (borderpoints[0]) {
+							t = borderpoints[0].y;
+							l = borderpoints[0].x;
+							b = canvas.height - borderpoints[0].y - 1;
+							r = canvas.width - borderpoints[0].x - 1;
+						}
+						if (borderpoints[1]) {
+							t = Math.min(t, borderpoints[1].y);
+							l = Math.min(l, borderpoints[1].x);
+							b = Math.min(
+								b,
+								canvas.height - borderpoints[1].y - 1,
+							);
+							r = Math.min(
+								r,
+								canvas.width - borderpoints[1].x - 1,
+							);
+						}
+						if (!path.startsWith("@item/"))
+							this.textureBorders[p] = { t, l, r, b };
 
 						const fctx = canvas.getContext("2d");
 						fctx.imageSmoothingEnabled = false;
@@ -419,7 +453,7 @@ window.ccwsui = {
 	},
 	getTexSize(path) {
 		const img = this.textures[path];
-		if (!img) return { w: 0, h: 0 };
+		if (!img) return { w: 1, h: 1 };
 		return { w: img.width, h: img.height };
 	},
 

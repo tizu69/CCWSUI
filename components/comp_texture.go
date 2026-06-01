@@ -7,14 +7,13 @@ import (
 )
 
 type Texture struct {
-	Tex        string
-	T, L, B, R int
-	Child      Native `json:"-"`
-	Pad        bool
+	Tex   string
+	Child Native `json:"-"`
+	Pad   bool
 }
 
-func Textured(tex string, t, l, b, r int, child Native) Texture {
-	return Texture{Tex: tex, T: t, L: l, B: b, R: r, Child: child}
+func Textured(tex string, child Native) Texture {
+	return Texture{Tex: tex, Child: child}
 }
 
 func init() {
@@ -46,22 +45,24 @@ func (c Texture) SetPad(pad bool) Texture {
 }
 
 func (c Texture) Measure(ctx MeasureContext, constraint Size) Size {
+	cT, cL, cB, cR := ctx.GetTexBorders(c.Tex)
 	if c.Pad {
 		child := c.Child.Measure(ctx, Size{
-			W: max(0, constraint.W-c.L-c.R),
-			H: max(0, constraint.H-c.T-c.B),
+			W: max(0, constraint.W-cL-cR),
+			H: max(0, constraint.H-cT-cB),
 		})
-		return Size{W: child.W + c.L + c.R, H: child.H + c.T + c.B}
+		return Size{W: child.W + cL + cR, H: child.H + cT + cB}
 	}
 	return c.Child.Measure(ctx, constraint)
 }
 
 func (c Texture) Layout(ctx LayoutContext, rect Rect) LayoutNode {
 	childRect := rect
+	cT, cL, cB, cR := ctx.GetTexBorders(c.Tex)
 	if c.Pad {
 		childRect = Rect{
-			X: rect.X + c.L, Y: rect.Y + c.T,
-			W: max(0, rect.W-c.L-c.R), H: max(0, rect.H-c.T-c.B),
+			X: rect.X + cL, Y: rect.Y + cT,
+			W: max(0, rect.W-cL-cR), H: max(0, rect.H-cT-cB),
 		}
 	}
 	return LayoutNode{
@@ -81,17 +82,19 @@ func (c Texture) Render(ctx RenderContext, layout LayoutNode) {
 		return
 	}
 
+	cT, cL, cB, cR := ctx.GetTexBorders(c.Tex)
+
 	// destination border sizes
-	leftW := min(c.L, r.W)
-	rightW := min(c.R, max(0, r.W-leftW))
-	topH := min(c.T, r.H)
-	bottomH := min(c.B, max(0, r.H-topH))
+	leftW := min(cL, r.W)
+	rightW := min(cR, max(0, r.W-leftW))
+	topH := min(cT, r.H)
+	bottomH := min(cB, max(0, r.H-topH))
 	midW := max(0, r.W-leftW-rightW)
 	midH := max(0, r.H-topH-bottomH)
 
 	// source center size
-	srcMidW := max(1, texW-c.L-c.R)
-	srcMidH := max(1, texH-c.T-c.B)
+	srcMidW := max(1, texW-cL-cR)
+	srcMidH := max(1, texH-cT-cB)
 
 	x1, x2 := r.X+leftW, r.X+leftW+midW
 	y1, y2 := r.Y+topH, r.Y+topH+midH
@@ -101,31 +104,31 @@ func (c Texture) Render(ctx RenderContext, layout LayoutNode) {
 		ctx.RenderTex(r.X, r.Y, leftW, topH, c.Tex, 0, 0)
 	}
 	if rightW > 0 && topH > 0 {
-		ctx.RenderTex(x2, r.Y, rightW, topH, c.Tex, texW-c.R, 0)
+		ctx.RenderTex(x2, r.Y, rightW, topH, c.Tex, texW-cR, 0)
 	}
 	if leftW > 0 && bottomH > 0 {
-		ctx.RenderTex(r.X, y2, leftW, bottomH, c.Tex, 0, texH-c.B)
+		ctx.RenderTex(r.X, y2, leftW, bottomH, c.Tex, 0, texH-cB)
 	}
 	if rightW > 0 && bottomH > 0 {
-		ctx.RenderTex(x2, y2, rightW, bottomH, c.Tex, texW-c.R, texH-c.B)
+		ctx.RenderTex(x2, y2, rightW, bottomH, c.Tex, texW-cR, texH-cB)
 	}
 
 	// edges
 	if midW > 0 && topH > 0 {
-		ctx.RenderTexPattern(x1, r.Y, midW, topH, c.Tex, c.L, 0, srcMidW, topH)
+		ctx.RenderTexPattern(x1, r.Y, midW, topH, c.Tex, cL, 0, srcMidW, topH)
 	}
 	if midW > 0 && bottomH > 0 {
-		ctx.RenderTexPattern(x1, y2, midW, bottomH, c.Tex, c.L, texH-c.B, srcMidW, bottomH)
+		ctx.RenderTexPattern(x1, y2, midW, bottomH, c.Tex, cL, texH-cB, srcMidW, bottomH)
 	}
 	if midH > 0 && leftW > 0 {
-		ctx.RenderTexPattern(r.X, y1, leftW, midH, c.Tex, 0, c.T, leftW, srcMidH)
+		ctx.RenderTexPattern(r.X, y1, leftW, midH, c.Tex, 0, cT, leftW, srcMidH)
 	}
 	if midH > 0 && rightW > 0 {
-		ctx.RenderTexPattern(x2, y1, rightW, midH, c.Tex, texW-c.R, c.T, rightW, srcMidH)
+		ctx.RenderTexPattern(x2, y1, rightW, midH, c.Tex, texW-cR, cT, rightW, srcMidH)
 	}
 
 	// center
-	ctx.RenderTexPattern(x1, y1, x2-x1, y2-y1, c.Tex, c.L, c.T, srcMidW, srcMidH)
+	ctx.RenderTexPattern(x1, y1, x2-x1, y2-y1, c.Tex, cL, cT, srcMidW, srcMidH)
 
 	c.Child.Render(ctx, layout.Children[0])
 }

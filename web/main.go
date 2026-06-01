@@ -30,12 +30,14 @@ type jsapi struct {
 	textWidthCache   map[string]int
 	textWidthScale   int
 	context          map[string]any
+	texBordersCache  map[string][4]int
 }
 
 func NewJSAPI() *jsapi {
 	j := &jsapi{
-		wrap:    js.Global().Get("ccwsui"),
-		context: make(map[string]any),
+		wrap:            js.Global().Get("ccwsui"),
+		context:         make(map[string]any),
+		texBordersCache: make(map[string][4]int),
 	}
 
 	j.wrap.Set("totalRerender", js.FuncOf(j.totalRerender))
@@ -137,6 +139,22 @@ func (j *jsapi) RenderTexPattern(x, y, w, h int, path string, sx, sy, sw, sh int
 func (j *jsapi) GetTexSize(path string) (w, h int) {
 	ret := j.wrap.Call("getTexSize", path)
 	return ret.Get("w").Int(), ret.Get("h").Int()
+}
+
+func (j *jsapi) GetTexBorders(path string) (t, l, b, r int) {
+	if borders, ok := j.texBordersCache[path]; ok {
+		return borders[0], borders[1], borders[2], borders[3]
+	}
+	ret := j.wrap.Get("textureBorders").Get(path)
+	if ret.IsUndefined() {
+		return 0, 0, 0, 0
+	}
+	j.texBordersCache[path] = [4]int{
+		ret.Get("t").Int(), ret.Get("l").Int(),
+		ret.Get("b").Int(), ret.Get("r").Int(),
+	}
+	return ret.Get("t").Int(), ret.Get("l").Int(),
+		ret.Get("b").Int(), ret.Get("r").Int()
 }
 
 func (j *jsapi) GuessTextWidth(text string) int {

@@ -52,6 +52,7 @@ type MeasureContext interface {
 	GuessTextWidth(text string) int
 	GetLineHeight() int
 	GetTexSize(path string) (x, y int)
+	GetTexBorders(path string) (t, l, b, r int)
 }
 
 type interactivityContext interface {
@@ -94,6 +95,7 @@ type RenderContext interface {
 	RenderTexMixel(x, y, w, h int, path string, sx, sy, sw, sh int, nn bool)
 	RenderTexPattern(x, y, w, h int, path string, sx, sy, sw, sh int)
 	GetTexSize(path string) (x, y int)
+	GetTexBorders(path string) (t, l, b, r int)
 
 	// When called, the given texture will be loaded and cached after this
 	// render pass is done. This is a no-op if the texture is already loaded.
