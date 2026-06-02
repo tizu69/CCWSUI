@@ -35,6 +35,7 @@ window.ccwsui = {
 
 		if (this.mouseScroll.dx || this.mouseScroll.dy)
 			this.mouseScroll = { dx: 0, dy: 0 };
+		this.mouseDown = false;
 	},
 
 	/** @type {HTMLCanvasElement} */
@@ -42,6 +43,7 @@ window.ccwsui = {
 
 	mousePos: { x: -1, y: -1 },
 	mouseScroll: { dx: 0, dy: 0 },
+	mouseDown: false,
 	keysDown: new Set(),
 	async prepare() {
 		const font = new FontFace("CCWSUI", 'url("/static/font.ttf")');
@@ -57,29 +59,29 @@ window.ccwsui = {
 			this.ctx = this.canvas.getContext("2d");
 			this.queueRerender("Resized");
 		});
-		window.addEventListener("keydown", (e) => {
+		this.canvas.addEventListener("keydown", (e) => {
 			this.keysDown.add(e.key);
 			this.queueRerender("Key pressed");
 			if (!isDevtoolsShortcut(e)) return;
 			e.preventDefault();
 			this.openDevtools();
 		});
-		window.addEventListener("keyup", (e) => {
+		this.canvas.addEventListener("keyup", (e) => {
 			this.keysDown.delete(e.key);
 			this.queueRerender("Key released");
 		});
-		window.addEventListener("mousemove", (e) => {
+		this.canvas.addEventListener("mousemove", (e) => {
 			this.mousePos = {
 				x: Math.floor(e.clientX / this.scale),
 				y: Math.floor(e.clientY / this.scale),
 			};
 			this.queueRerender("Mouse moved");
 		});
-		window.addEventListener("mouseout", () => {
+		this.canvas.addEventListener("mouseout", () => {
 			this.mousePos = { x: -1, y: -1 };
 			this.queueRerender("Mouse left");
 		});
-		window.addEventListener(
+		this.canvas.addEventListener(
 			"wheel",
 			(e) => {
 				if (e.ctrlKey) {
@@ -98,6 +100,10 @@ window.ccwsui = {
 			},
 			{ passive: false },
 		);
+		this.canvas.addEventListener("mousedown", (e) => {
+			this.mouseDown = true;
+			this.queueRerender("Mouse down");
+		});
 
 		requestAnimationFrame(this._rerenderAnimationFrame.bind(this));
 	},

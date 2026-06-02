@@ -8,6 +8,7 @@ import (
 	"g.tizu.dev/CCWSUI/components"
 	"github.com/coder/websocket"
 	"github.com/google/uuid"
+	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
 func (app *CCWSUI) handleHost(w http.ResponseWriter, r *http.Request) error {
@@ -18,10 +19,14 @@ func (app *CCWSUI) handleHost(w http.ResponseWriter, r *http.Request) error {
 	}
 	defer conn.Close(websocket.StatusInternalError, "Internal Server Error")
 
-	room := uuid.New().String()
-	app.roomsmu.Lock()
-	app.rooms[room] = NewRoom(room, "Home",
+	room := gonanoid.Must(6)
+	roominst, err := NewRoom(conn, room, "Home",
 		components.LiteralOf("Waiting for host..."))
+	if err != nil {
+		return err
+	}
+	app.roomsmu.Lock()
+	app.rooms[room] = roominst
 	app.roomsmu.Unlock()
 
 	for {
@@ -47,8 +52,15 @@ func (app *CCWSUI) handleHost(w http.ResponseWriter, r *http.Request) error {
 
 type HostMessageType int
 
+// Host to Server
 const (
-	HostMessageTypeTitle HostMessageType = iota + 1
+	HostMessageTypeUpdate HostMessageType = iota + 1
+)
+
+// Server to Host
+const (
+	HostMessageTypeReady HostMessageType = iota + 1
+	HostMessageTypeHello
 )
 
 type HostMessageEnvelope struct {
@@ -56,18 +68,31 @@ type HostMessageEnvelope struct {
 	Data json.RawMessage `json:"d"`
 }
 
-type HostMessageTitle struct {
-	Title string `json:"title"`
+type HostMessageUpdate struct {
+	Client uuid.UUID           `json:"client"`
+	Root   components.WireNode `json:"root"`
+}
+
+type HostMessageReady struct {
+	URL string `json:"url"`
+}
+
+type HostMessageHello struct {
+	Client uuid.UUID `json:"client"`
 }
 
 func (room *Room) handleHostMessage(conn *websocket.Conn, msg HostMessageEnvelope) error {
 	switch msg.Type {
-	case HostMessageTypeTitle:
-		var data HostMessageTitle
+	case HostMessageTypeUpdate:
+		var data HostMessageUpdate
 		if err := json.Unmarshal(msg.Data, &data); err != nil {
 			return err
 		}
-		room.Title = data.Title
+		if c, ok := room.Get(data.Client); ok {
+			if err := c.Update(data.Root); err != nil {
+				return err
+			}
+		}
 	default:
 		return fmt.Errorf("invalid type")
 	}

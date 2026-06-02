@@ -59,6 +59,9 @@ type interactivityContext interface {
 	GetDimensions() (w, h int)
 	GetMousePos() (x, y int)
 	GetMouseScroll() (dx, dy int)
+	// GetMouseDown returns true if the mouse was just pressed down. This is
+	// only true for one frame.
+	GetMouseDown() bool
 
 	// UseContext assigns the context value for the given id to v. If there is
 	// no context value for the given id, v will be kept unchanged, so you
@@ -70,6 +73,10 @@ type interactivityContext interface {
 	//	ctx.UseContext("scrollcontainer", &cctx)
 	//	cctx.X += 10 // persisted!
 	UseContext(id string, v any)
+	// SendEvent sends an event associated to the given ID to the host. The host
+	// may return new UI state in response to the event, but this is not
+	// guaranteed.
+	SendEvent(id string, v any)
 }
 
 type LayoutContext interface {

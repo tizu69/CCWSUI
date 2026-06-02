@@ -5,31 +5,6 @@ import (
 	. "maragu.dev/gomponents/html"
 )
 
-type ClickRegion struct {
-	Event string
-	Child Native
-}
-
-func Clickable(event string, child Native) ClickRegion {
-	return ClickRegion{Event: event, Child: child}
-}
-
-func (c ClickRegion) Render(ctx RenderContext) Node {
-	return Div(Data("ccwsui", "clickregion"), c.Child.Render(ctx),
-		ID("ccwsui-clickregion-"+c.Event),
-		Attr("role", "button"),
-		Attr("hx-post", "" /* ctx.EventURL(c.Event) */),
-		Attr("hx-trigger", "click"))
-}
-
-func (c ClickRegion) Measure(constraint Size) Size {
-	return c.Child.Measure(ctx, constraint)
-}
-
-func (c ClickRegion) Layout(rect Rect) LayoutNode {
-	return LayoutNode{Rect: rect, Children: []LayoutNode{c.Child.Layout(ctx, rect)}}
-}
-
 type InputRegion struct {
 	Event string
 	Value string

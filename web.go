@@ -40,6 +40,9 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *CCWSUI) handleRoot(w http.ResponseWriter, r *http.Request) error {
+	if r.Header.Get("Upgrade") == "websocket" {
+		return app.handleHost(w, r)
+	}
 	http.Redirect(w, r, "/r/home", http.StatusPermanentRedirect)
 	return nil
 }
@@ -72,8 +75,11 @@ func (app *CCWSUI) handleRoomService(w http.ResponseWriter, r *http.Request) err
 	}
 	defer conn.CloseNow()
 
-	room.Add(conn)
-	defer room.Remove(conn)
+	id, err := room.Add(conn)
+	if err != nil {
+		return err
+	}
+	defer room.Remove(id)
 
 	for {
 		_, _, err := conn.Read(ctx)

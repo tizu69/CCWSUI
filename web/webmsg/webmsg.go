@@ -8,9 +8,15 @@ import (
 
 type Type int
 
+// Server to Client
 const (
 	TypeUpdate Type = iota + 1
 	TypeTexture
+)
+
+// Client to Server
+const (
+	TypeEvent Type = iota + 1
 )
 
 type Envelope struct {
@@ -25,4 +31,9 @@ type Update struct {
 type Texture struct {
 	ID   string `json:"id"`
 	Data string `json:"data"`
+}
+
+type Event struct {
+	ID    string          `json:"id"`
+	Event json.RawMessage `json:"event"`
 }

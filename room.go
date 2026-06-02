@@ -7,45 +7,93 @@ import (
 	"math/rand"
 	"net/url"
 	"strconv"
+	"sync"
 
 	"g.tizu.dev/CCWSUI/components"
 	"g.tizu.dev/CCWSUI/web/webmsg"
 	"github.com/coder/websocket"
+	"github.com/google/uuid"
 )
 
 type Room struct {
+	conn  *websocket.Conn
 	id    string
 	Title string
 	Root  components.Native
 
-	listeners []*websocket.Conn
+	clients   map[uuid.UUID]*roomClient
+	clientsMu sync.Mutex
 }
 
-func NewRoom(id, title string, root components.Native) *Room {
-	return &Room{
-		id:    id,
-		Title: title,
-		Root:  root,
-
-		listeners: make([]*websocket.Conn, 0),
+func NewRoom(conn *websocket.Conn, id, title string, root components.Native) (*Room, error) {
+	r := &Room{
+		conn: conn, id: id,
+		Title: title, Root: root,
+		clients: make(map[uuid.UUID]*roomClient),
 	}
+	if conn == nil {
+		return r, nil
+	}
+
+	var err error
+	var b []byte
+	if b, err = json.Marshal(HostMessageReady{URL: r.UserURL()}); err != nil {
+		return nil, err
+	}
+	if b, err = json.Marshal(HostMessageEnvelope{
+		Type: HostMessageTypeReady, Data: b,
+	}); err != nil {
+		return nil, err
+	}
+	if err = r.conn.Write(context.TODO(), websocket.MessageText, b); err != nil {
+		return nil, err
+	}
+
+	return r, err
 }
 
-func (r *Room) Add(conn *websocket.Conn) {
+func (r *Room) Add(conn *websocket.Conn) (uuid.UUID, error) {
 	if err := r.sendUpdate(conn); err != nil {
 		conn.Close(websocket.StatusInternalError, err.Error())
-		return
+		return uuid.Nil, err
 	}
-	r.listeners = append(r.listeners, conn)
+
+	id := uuid.New()
+	r.clientsMu.Lock()
+	r.clients[id] = &roomClient{conn: conn}
+	r.clientsMu.Unlock()
+
+	if r.conn == nil {
+		return id, nil
+	}
+	var err error
+	var b []byte
+	if b, err = json.Marshal(HostMessageHello{Client: id}); err != nil {
+		return uuid.Nil, err
+	}
+	if b, err = json.Marshal(HostMessageEnvelope{
+		Type: HostMessageTypeHello, Data: b,
+	}); err != nil {
+		return uuid.Nil, err
+	}
+	if err = r.conn.Write(context.TODO(), websocket.MessageText, b); err != nil {
+		return uuid.Nil, err
+	}
+
+	return id, nil
 }
 
-func (r *Room) Remove(conn *websocket.Conn) {
-	for i, c := range r.listeners {
-		if c == conn {
-			r.listeners = append(r.listeners[:i], r.listeners[i+1:]...)
-			break
-		}
-	}
+func (r *Room) Remove(id uuid.UUID) {
+	r.clientsMu.Lock()
+	delete(r.clients, id)
+	r.clientsMu.Unlock()
+}
+
+func (r *Room) Get(id uuid.UUID) (*roomClient, bool) {
+	r.clientsMu.Lock()
+	c, ok := r.clients[id]
+	r.clientsMu.Unlock()
+	return c, ok
 }
 
 func (r *Room) sendUpdate(conn *websocket.Conn) error {
@@ -87,8 +135,37 @@ func (r *Room) SocketURL() string {
 	return fmt.Sprintf("/r/%s/service", url.PathEscape(r.id))
 }
 
+func (r *Room) UserURL() string {
+	return fmt.Sprintf("/r/%s", url.PathEscape(r.id))
+}
+
 func (r *Room) EventURL(ev string) string {
 	return fmt.Sprintf("/r/%s/event/%s", url.PathEscape(r.id), url.PathEscape(ev))
+}
+
+type roomClient struct {
+	conn *websocket.Conn
+	root components.WireNode
+}
+
+func (r *roomClient) Update(root components.WireNode) error {
+	var err error
+	var b []byte
+	if b, err = json.Marshal(webmsg.Update{
+		Root: root,
+	}); err != nil {
+		return err
+	}
+	if b, err = json.Marshal(webmsg.Envelope{
+		Type: webmsg.TypeUpdate, Data: b,
+	}); err != nil {
+		return err
+	}
+	if err = r.conn.Write(context.TODO(), websocket.MessageText, b); err != nil {
+		return err
+	}
+	r.root = root
+	return nil
 }
 
 func getCoreRooms() map[string]*Room {
@@ -98,12 +175,12 @@ func getCoreRooms() map[string]*Room {
 }
 
 func getCoreRoomHome() *Room {
-	return NewRoom("home", "CCWSUI!",
+	r, _ := NewRoom(nil, "home", "CCWSUI!",
 		components.Overlaid(
 			components.Expand(components.Textured("background", components.Filler())),
 			components.HStacked(
-				stockkeeper(),
-				stockkeeper(),
+				stockkeeper("stockkeeper"),
+				stockkeeper("stockkeeper2"),
 				components.Expand(
 					components.AlignedCenter(
 						components.Constrained(200, 0,
@@ -156,9 +233,10 @@ func getCoreRoomHome() *Room {
 							),
 						))),
 			).WithPadding(8)))
+	return r
 }
 
-func stockkeeper() components.Native {
+func stockkeeper(id string) components.Native {
 	return components.AlignedCenter(
 		components.Constrained(0, 197, components.Textured("stockkeeper",
 			components.VStacked(
@@ -170,7 +248,7 @@ func stockkeeper() components.Native {
 
 				components.ExpandV(
 					components.Padded(1, 22, 18, 22, components.Scrolling(
-						"stockkeeper", components.DirectionV, components.VStacked(
+						id, components.DirectionV, components.VStacked(
 							nineSlots(),
 							nineSlots(),
 							nineSlots(),
@@ -212,11 +290,13 @@ func slot() components.Native {
 	_ = count
 
 	return components.Overlaid(
-		components.Overlaid(
-			components.Textured("plain-inset", components.Padded(1, 1, 1, 1,
-				components.ItemTextured(item.Name()[:len(item.Name())-4]))),
-			components.Aligned(components.AlignmentEnd, components.AlignmentEnd,
-				components.LiteralOf(strconv.Itoa(count)).WithShadow(true)),
+		components.Clickable("slot",
+			components.Overlaid(
+				components.Textured("plain-inset", components.Padded(1, 1, 1, 1,
+					components.ItemTextured(item.Name()[:len(item.Name())-4]))),
+				components.Aligned(components.AlignmentEnd, components.AlignmentEnd,
+					components.LiteralOf(strconv.Itoa(count)).WithShadow(true)),
+			),
 		),
 		components.FollowsMouse(components.AlignmentStart, components.AlignmentEnd,
 			components.Padded(0, 3, 0, 3,

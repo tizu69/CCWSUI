@@ -31,6 +31,7 @@ type jsapi struct {
 	textWidthScale   int
 	context          map[string]any
 	texBordersCache  map[string][4]int
+	ws               *websocket.Conn
 }
 
 func NewJSAPI() *jsapi {
@@ -68,6 +69,10 @@ func (j *jsapi) GetMouseScroll() (dx, dy int) {
 	return ret.Get("dx").Int(), ret.Get("dy").Int()
 }
 
+func (j *jsapi) GetMouseDown() bool {
+	return j.wrap.Get("mouseDown").Bool()
+}
+
 func (j *jsapi) Clear() {
 	j.wrap.Call("clear")
 }
@@ -87,6 +92,27 @@ func (j *jsapi) UseContext(id string, v any) {
 		panic(fmt.Sprintf("context %q already exists with different type %T", id, known))
 	}
 	inner.Set(kv)
+}
+
+func (j *jsapi) SendEvent(id string, v any) {
+	var b []byte
+	var err error
+	if b, err = json.Marshal(v); err != nil {
+		slog.Error("Failed to marshal event data", "err", err)
+		return
+	}
+	if b, err = json.Marshal(webmsg.Event{ID: id, Event: b}); err != nil {
+		slog.Error("Failed to marshal event", "err", err)
+		return
+	}
+	if b, err = json.Marshal(webmsg.Envelope{Type: webmsg.TypeEvent, Data: b}); err != nil {
+		slog.Error("Failed to marshal event envelope", "err", err)
+		return
+	}
+	if err = j.ws.Write(context.TODO(), websocket.MessageText, b); err != nil {
+		slog.Error("Failed to send event", "err", err)
+		return
+	}
 }
 
 func (j *jsapi) Scissor(x, y, w, h int) {
@@ -255,6 +281,7 @@ func main() {
 	}
 	defer ws.CloseNow()
 	ws.SetReadLimit(1024 * 1024) // 1MB
+	j.ws = ws
 
 	go func() {
 		for {
