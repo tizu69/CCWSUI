@@ -1,12 +1,15 @@
-local CCWSUI = require("ccwsui").new()
+local CCWSUI = require("ccwsui").new("testing")
+local c = require("components")
 
+local visits = 0
 function CCWSUI:render(client)
-	return {
-		kind = "literal",
-		props = {
-			Pieces = { { Text = "Hello from Lua!", Color = { R = 255, G = 0, B = 0, A = 255 } } }
-		},
-	}
+	visits = visits + 1
+	return c.Literal("Hello!!! You're visit #" .. tostring(visits))
+		:hexColor("#cba6f7")
+		:wrapClickRegion("foobar")
+		:wrapTexture("")
+		:wrapAlignCenter()
+		:wrapExpand()
 end
 
 function CCWSUI:ready(url)
@@ -14,3 +17,4 @@ function CCWSUI:ready(url)
 end
 
 CCWSUI:run()
+print(CCWSUI.error)
