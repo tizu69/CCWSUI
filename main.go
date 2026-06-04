@@ -40,7 +40,7 @@ func main() {
 
 	app := CCWSUI{
 		addr:  addr,
-		rooms: getCoreRooms(),
+		rooms: make(map[string]*Room),
 	}
 	app.Run()
 }
@@ -49,4 +49,11 @@ func (app *CCWSUI) room(id string) *Room {
 	app.roomsmu.RLock()
 	defer app.roomsmu.RUnlock()
 	return app.rooms[id]
+}
+
+func (app *CCWSUI) slugTaken(slug string) bool {
+	app.roomsmu.RLock()
+	defer app.roomsmu.RUnlock()
+	_, ok := app.rooms[slug]
+	return ok
 }

@@ -15,8 +15,8 @@ func init() {
 	RegisterWire("stack", StackFromWire)
 }
 
-func HStacked(children ...Native) Stack { return Stack{Direction: StackDirectionH, Children: children} }
-func VStacked(children ...Native) Stack { return Stack{Direction: StackDirectionV, Children: children} }
+func StackH(children ...Native) Stack { return Stack{Direction: StackDirectionH, Children: children} }
+func StackV(children ...Native) Stack { return Stack{Direction: StackDirectionV, Children: children} }
 
 func (c Stack) WithPadding(padding int) Stack {
 	c.Padding = padding

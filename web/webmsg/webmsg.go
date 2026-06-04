@@ -1,22 +1,19 @@
 package webmsg
 
 import (
+	"context"
 	"encoding/json"
 
 	"g.tizu.dev/CCWSUI/components"
+	"github.com/coder/websocket"
 )
 
 type Type int
 
-// Server to Client
 const (
-	TypeUpdate Type = iota + 1
+	TypeUpdate  Type = iota + 1
 	TypeTexture
-)
-
-// Client to Server
-const (
-	TypeEvent Type = iota + 1
+	TypeEvent
 )
 
 type Envelope struct {
@@ -36,4 +33,16 @@ type Texture struct {
 type Event struct {
 	ID    string          `json:"id"`
 	Event json.RawMessage `json:"event"`
+}
+
+func SendMsg(conn *websocket.Conn, typ Type, payload any) error {
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	env, err := json.Marshal(Envelope{Type: typ, Data: data})
+	if err != nil {
+		return err
+	}
+	return conn.Write(context.Background(), websocket.MessageText, env)
 }

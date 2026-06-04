@@ -3,11 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"g.tizu.dev/CCWSUI/components"
 	"github.com/coder/websocket"
-	"github.com/google/uuid"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
@@ -19,82 +19,83 @@ func (app *CCWSUI) handleHost(w http.ResponseWriter, r *http.Request) error {
 	}
 	defer conn.Close(websocket.StatusInternalError, "Internal Server Error")
 
-	room := gonanoid.Must(6)
-	roominst, err := NewRoom(conn, room, "Home",
-		components.LiteralOf("Waiting for host..."))
-	if err != nil {
-		return err
-	}
-	app.roomsmu.Lock()
-	app.rooms[room] = roominst
-	app.roomsmu.Unlock()
+	room := NewRoom(conn, "CCWSUI", components.LiteralOf("Waiting for host..."))
+	defer func() {
+		if room.ID != "" {
+			app.roomsmu.Lock()
+			delete(app.rooms, room.ID)
+			app.roomsmu.Unlock()
+		}
+	}()
 
 	for {
 		_, b, err := conn.Read(r.Context())
 		if err != nil {
-			break
-		}
-
-		var msg HostMessageEnvelope
-		if err := json.Unmarshal(b, &msg); err != nil {
-			return conn.Close(websocket.StatusUnsupportedData, "Bad JSON")
-		}
-
-		app.roomsmu.RLock()
-		if err := app.rooms[room].handleHostMessage(conn, msg); err != nil {
-			return conn.Close(websocket.StatusUnsupportedData, "Invalid Message")
-		}
-		app.roomsmu.RUnlock()
-	}
-
-	return nil
-}
-
-type HostMessageType int
-
-// Host to Server
-const (
-	HostMessageTypeUpdate HostMessageType = iota + 1
-)
-
-// Server to Host
-const (
-	HostMessageTypeReady HostMessageType = iota + 1
-	HostMessageTypeHello
-)
-
-type HostMessageEnvelope struct {
-	Type HostMessageType `json:"t"`
-	Data json.RawMessage `json:"d"`
-}
-
-type HostMessageUpdate struct {
-	Client uuid.UUID           `json:"client"`
-	Root   components.WireNode `json:"root"`
-}
-
-type HostMessageReady struct {
-	URL string `json:"url"`
-}
-
-type HostMessageHello struct {
-	Client uuid.UUID `json:"client"`
-}
-
-func (room *Room) handleHostMessage(conn *websocket.Conn, msg HostMessageEnvelope) error {
-	switch msg.Type {
-	case HostMessageTypeUpdate:
-		var data HostMessageUpdate
-		if err := json.Unmarshal(msg.Data, &data); err != nil {
 			return err
 		}
-		if c, ok := room.Get(data.Client); ok {
-			if err := c.Update(data.Root); err != nil {
-				return err
-			}
+
+		var env HostEnvelope
+		if err := json.Unmarshal(b, &env); err != nil {
+			conn.Close(websocket.StatusUnsupportedData, "Bad JSON")
+			return err
 		}
-	default:
-		return fmt.Errorf("invalid type")
+
+		if err := app.handleHostMsg(room, env); err != nil {
+			conn.Close(websocket.StatusUnsupportedData, err.Error())
+			return err
+		}
 	}
-	return nil
+}
+
+func (app *CCWSUI) handleHostMsg(room *Room, env HostEnvelope) error {
+	switch env.Type {
+	case HostMsgUpdate:
+		if !room.Frozen() {
+			return fmt.Errorf("room not yet frozen")
+		}
+		var data HostUpdatePayload
+		if err := json.Unmarshal(env.Data, &data); err != nil {
+			return err
+		}
+		c, ok := room.Get(data.Client)
+		if !ok {
+			return nil
+		}
+		return c.Update(data.Root)
+
+	case HostMsgWantSlug:
+		if room.Frozen() {
+			return fmt.Errorf("room is frozen")
+		}
+		var data HostWantSlugPayload
+		if err := json.Unmarshal(env.Data, &data); err != nil {
+			return err
+		}
+		room.wantedSlug = data.Slug
+		return nil
+
+	case HostMsgFreeze:
+		if room.Frozen() {
+			return fmt.Errorf("room already frozen")
+		}
+		room.frozen = true
+
+		id := room.wantedSlug
+		for id == "" || app.slugTaken(id) {
+			id = gonanoid.Must(6)
+		}
+		room.ID = id
+
+		app.roomsmu.Lock()
+		app.rooms[id] = room
+		app.roomsmu.Unlock()
+
+		slog.Info("Room frozen", "id", id)
+		return sendHostMsg(room.hostConn, HostMsgReady, HostReadyPayload{
+			URL: room.UserURL(),
+		})
+
+	default:
+		return fmt.Errorf("unknown host message type: %d", env.Type)
+	}
 }

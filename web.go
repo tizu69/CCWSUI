@@ -34,7 +34,9 @@ type Handler func(w http.ResponseWriter, r *http.Request) error
 
 func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err := h(w, r); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		if r.Header.Get("Upgrade") != "websocket" {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 		slog.Error("Failed to handle request", "method", r.Method, "path", r.URL.Path, "err", err)
 	}
 }
@@ -55,7 +57,7 @@ func (app *CCWSUI) handleRoom(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	return components.Root(fmt.Sprintf("/r/%s/service",
-		url.PathEscape(room.id)), room.Title, w)
+		url.PathEscape(room.ID)), room.Title, w)
 }
 
 func (app *CCWSUI) handleRoomService(w http.ResponseWriter, r *http.Request) error {
