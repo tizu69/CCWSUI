@@ -45,6 +45,9 @@ window.ccwsui = {
 	mouseScroll: { dx: 0, dy: 0 },
 	mouseDown: false,
 	keysDown: new Set(),
+	shiftDown: false,
+	ctrlDown: false,
+	altDown: false,
 	async prepare() {
 		const font = new FontFace("CCWSUI", 'url("/static/font.ttf")');
 		await font.load();
@@ -59,15 +62,21 @@ window.ccwsui = {
 			this.ctx = this.canvas.getContext("2d");
 			this.queueRerender("Resized");
 		});
-		this.canvas.addEventListener("keydown", (e) => {
+		window.addEventListener("keydown", (e) => {
 			this.keysDown.add(e.key);
+			this.shiftDown = e.shiftKey;
+			this.ctrlDown = e.ctrlKey;
+			this.altDown = e.altKey;
 			this.queueRerender("Key pressed");
 			if (!isDevtoolsShortcut(e)) return;
 			e.preventDefault();
 			this.openDevtools();
 		});
-		this.canvas.addEventListener("keyup", (e) => {
+		window.addEventListener("keyup", (e) => {
 			this.keysDown.delete(e.key);
+			this.shiftDown = e.shiftKey;
+			this.ctrlDown = e.ctrlKey;
+			this.altDown = e.altKey;
 			this.queueRerender("Key released");
 		});
 		this.canvas.addEventListener("mousemove", (e) => {

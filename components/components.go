@@ -63,6 +63,10 @@ type interactivityContext interface {
 	// only true for one frame.
 	GetMouseDown() bool
 
+	GetShiftDown() bool
+	GetCtrlDown() bool
+	GetAltDown() bool
+
 	// UseContext assigns the context value for the given id to v. If there is
 	// no context value for the given id, v will be kept unchanged, so you
 	// should initialize it to a sensible default. v must be a pointer to a

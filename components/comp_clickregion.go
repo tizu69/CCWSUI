@@ -22,9 +22,19 @@ func (c ClickRegion) Measure(ctx MeasureContext, constraint Size) Size {
 	return c.Child.Measure(ctx, constraint)
 }
 
+type clickRegionEvent struct {
+	Shift bool `json:"shift"`
+	Ctrl  bool `json:"ctrl"`
+	Alt   bool `json:"alt"`
+}
+
 func (c ClickRegion) Layout(ctx LayoutContext, rect Rect) LayoutNode {
 	if ctx.GetMouseDown() && rect.Contains(ctx.GetMousePos()) {
-		ctx.SendEvent(c.Event, nil)
+		ctx.SendEvent(c.Event, clickRegionEvent{
+			Shift: ctx.GetShiftDown(),
+			Ctrl:  ctx.GetCtrlDown(),
+			Alt:   ctx.GetAltDown(),
+		})
 	}
 	return LayoutNode{
 		Rect: rect, Title: fmt.Sprintf("ClickRegion (%s)", c.Event),

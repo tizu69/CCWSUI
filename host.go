@@ -24,6 +24,9 @@ func (app *CCWSUI) handleHost(w http.ResponseWriter, r *http.Request) error {
 		if room.ID != "" {
 			app.roomsmu.Lock()
 			delete(app.rooms, room.ID)
+			for _, c := range room.clients {
+				c.Close()
+			}
 			app.roomsmu.Unlock()
 		}
 	}()

@@ -17,6 +17,8 @@ const (
 	HostMsgFreeze
 	HostMsgReady
 	HostMsgHello
+	HostMsgLeave
+	HostMsgEvent
 )
 
 // Host to Server
@@ -40,6 +42,16 @@ type HostHelloPayload struct {
 	Client uuid.UUID `json:"client"`
 }
 
+type HostLeavePayload struct {
+	Client uuid.UUID `json:"client"`
+}
+
+type HostEventPayload struct {
+	Client uuid.UUID       `json:"client"`
+	Event  string          `json:"event"`
+	Data   json.RawMessage `json:"data"`
+}
+
 type HostEnvelope struct {
 	Type HostMsg         `json:"t"`
 	Data json.RawMessage `json:"d"`
@@ -56,5 +68,3 @@ func sendHostMsg(conn *websocket.Conn, typ HostMsg, payload any) error {
 	}
 	return conn.Write(context.TODO(), websocket.MessageText, env)
 }
-
-

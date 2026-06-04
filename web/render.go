@@ -11,7 +11,7 @@ import (
 )
 
 func (j *jsapi) TotalRerender(reason string) {
-	slog.Info("Rerendering!")
+	slog.Info("Rerendering!", "reason", reason)
 	j.Clear()
 	if j.Root == nil {
 		return

@@ -25,6 +25,16 @@ local StackDirectionV = "v"
 
 local emptyarr = textutils.empty_json_array
 
+local alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+local function nanoid(len)
+	local id = ""
+	for _ = 1, len or 21 do
+		local r = math.random(1, #alphabet)
+		id = id .. alphabet:sub(r, r)
+	end
+	return id
+end
+
 local function hexToByte(hex) return tonumber(hex, 16) or 0 end
 
 ---@param hex string
@@ -150,20 +160,29 @@ end
 ---@class ClickRegion : CCWSUI.Component
 local ClickRegion = makecomp()
 
----@param event string
+---@class CCWSUI.ClickRegionEvent
+---@field shift boolean
+---@field ctrl boolean
+---@field alt boolean
+
+---@param ctx CCWSUI.Context
+---@param event CCWSUI.Handler<CCWSUI.ClickRegionEvent>|string
 ---@param child CCWSUI.Component
 ---@return ClickRegion
-function components.ClickRegion(event, child)
+function components.ClickRegion(ctx, event, child)
+	local eventid = type(event) == "string" and event or nanoid()
+	if type(event) == "function" then ctx:addHandler(eventid, event) end
 	return setmetatable({
 		kind = "clickregion",
-		props = { Event = event },
+		props = { Event = eventid },
 		children = { child },
 	}, { __index = ClickRegion })
 end
 
----@param event string
+---@param ctx CCWSUI.Context
+---@param event CCWSUI.Handler<CCWSUI.ClickRegionEvent>|string
 ---@return ClickRegion
-function component:wrapClickRegion(event) return components.ClickRegion(event, self) end
+function component:wrapClickRegion(ctx, event) return components.ClickRegion(ctx, event, self) end
 
 ---@class Constrain : CCWSUI.Component
 local Constrain = makecomp()

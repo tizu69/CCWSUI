@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"embed"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
 
 	"g.tizu.dev/CCWSUI/components"
+	"g.tizu.dev/CCWSUI/web/webmsg"
 	"github.com/coder/websocket"
 )
 
@@ -20,7 +22,6 @@ func (app *CCWSUI) Run() {
 	mux.Handle("/{$}", Handler(app.handleRoot))
 	mux.Handle("GET /r/{room}", Handler(app.handleRoom))
 	mux.Handle("GET /r/{room}/service", Handler(app.handleRoomService))
-	mux.Handle("POST /r/{room}/event/{ev}", Handler(app.handleRoomEvent))
 	mux.Handle("GET /host", Handler(app.handleHost))
 	mux.Handle("GET /static/", http.FileServer(http.FS(staticFS)))
 
@@ -84,22 +85,27 @@ func (app *CCWSUI) handleRoomService(w http.ResponseWriter, r *http.Request) err
 	defer room.Remove(id)
 
 	for {
-		_, _, err := conn.Read(ctx)
+		_, msg, err := conn.Read(ctx)
 		if err != nil {
 			break
 		}
+
+		var e webmsg.Envelope
+		if err := json.Unmarshal(msg, &e); err != nil {
+			return err
+		}
+
+		switch e.Type {
+		case webmsg.TypeEvent:
+			var event webmsg.Event
+			if err := json.Unmarshal(e.Data, &event); err != nil {
+				return err
+			}
+			room.HandleEvent(id, event)
+		default:
+			return err
+		}
 	}
 
-	return nil
-}
-
-func (app *CCWSUI) handleRoomEvent(w http.ResponseWriter, r *http.Request) error {
-	room := app.room(r.PathValue("room"))
-	if room == nil {
-		http.Error(w, "Room not found", http.StatusNotFound)
-		return nil
-	}
-
-	// return components.HtmxSwap("ccwsui-root", room.Root.Render(room)).Render(w)
 	return nil
 }

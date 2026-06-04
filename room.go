@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"net/url"
 	"sync"
 
@@ -63,6 +64,22 @@ func (r *Room) Remove(id uuid.UUID) {
 	r.clientsMu.Lock()
 	delete(r.clients, id)
 	r.clientsMu.Unlock()
+
+	if r.hostConn != nil {
+		if err := sendHostMsg(r.hostConn, HostMsgLeave, HostLeavePayload{Client: id}); err != nil {
+			slog.Error("failed to send leave message to host", "err", err)
+		}
+	}
+}
+
+func (r *Room) HandleEvent(id uuid.UUID, ev webmsg.Event) {
+	if r.hostConn != nil {
+		if err := sendHostMsg(r.hostConn, HostMsgEvent, HostEventPayload{
+			Client: id, Event: ev.ID, Data: ev.Event,
+		}); err != nil {
+			slog.Error("failed to send event message to host", "err", err)
+		}
+	}
 }
 
 func (r *Room) Get(id uuid.UUID) (*roomClient, bool) {
@@ -103,4 +120,8 @@ type roomClient struct {
 
 func (c *roomClient) Update(root components.WireNode) error {
 	return webmsg.SendMsg(c.conn, webmsg.TypeUpdate, webmsg.Update{Root: root})
+}
+
+func (c *roomClient) Close() error {
+	return c.conn.Close(websocket.StatusAbnormalClosure, "Host left")
 }

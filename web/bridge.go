@@ -27,6 +27,18 @@ func (j *jsapi) GetMouseDown() bool {
 	return j.wrap.Get("mouseDown").Bool()
 }
 
+func (j *jsapi) GetShiftDown() bool {
+	return j.wrap.Get("shiftDown").Bool()
+}
+
+func (j *jsapi) GetCtrlDown() bool {
+	return j.wrap.Get("ctrlDown").Bool()
+}
+
+func (j *jsapi) GetAltDown() bool {
+	return j.wrap.Get("altDown").Bool()
+}
+
 func (j *jsapi) Clear() {
 	j.wrap.Call("clear")
 }
