@@ -3,13 +3,14 @@ local c = require("components")
 
 --- @param ctx CCWSUI.Context
 local function line(ctx)
-	return c.Literal("Hello!!! You're click #" .. tostring(ctx.state.count or 0))
-		:hexColor("#cba6f7")
+	local user = ctx:s("user")
+	return c.Literal("Hello!!! You're click #" .. tostring(user.count or 0))
+		:hexColor("#555555")
 		:wrapPadding(2, 2, 2, 2)
-		:wrapTexture("plain"):pad():tintedHex("#1e1e2e")
+		:wrapTexture("plain"):pad()
 		:wrapClickRegion(ctx, function(ev)
 			local add = ev.shift and 10 or 1
-			ctx.state.count = (ctx.state.count or 0) + add
+			user.count = (user.count or 0) + add
 		end)
 		:wrapAlignCenter()
 		:wrapExpand()

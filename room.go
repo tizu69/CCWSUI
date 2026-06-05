@@ -36,7 +36,7 @@ func NewRoom(hostConn *websocket.Conn, title string, root components.Native) *Ro
 
 func (r *Room) Frozen() bool { return r.frozen }
 
-func (r *Room) Add(conn *websocket.Conn) (uuid.UUID, error) {
+func (r *Room) Add(conn *websocket.Conn, userid uuid.UUID) (uuid.UUID, error) {
 	if !r.frozen {
 		return uuid.Nil, fmt.Errorf("room is not yet accepting clients")
 	}
@@ -48,11 +48,14 @@ func (r *Room) Add(conn *websocket.Conn) (uuid.UUID, error) {
 
 	id := uuid.New()
 	r.clientsMu.Lock()
-	r.clients[id] = &roomClient{conn: conn}
+	r.clients[id] = &roomClient{conn: conn, UserID: userid}
 	r.clientsMu.Unlock()
 
 	if r.hostConn != nil {
-		if err := sendHostMsg(r.hostConn, HostMsgHello, HostHelloPayload{Client: id}); err != nil {
+		if err := sendHostMsg(r.hostConn, HostMsgHello, HostHelloPayload{
+			Client: id,
+			User:   userid,
+		}); err != nil {
 			return uuid.Nil, err
 		}
 	}
@@ -115,7 +118,8 @@ func (r *Room) sendUpdate(conn *websocket.Conn) error {
 }
 
 type roomClient struct {
-	conn *websocket.Conn
+	conn   *websocket.Conn
+	UserID uuid.UUID
 }
 
 func (c *roomClient) Update(root components.WireNode) error {

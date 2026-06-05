@@ -40,6 +40,7 @@ type HostReadyPayload struct {
 
 type HostHelloPayload struct {
 	Client uuid.UUID `json:"client"`
+	User   uuid.UUID `json:"user"`
 }
 
 type HostLeavePayload struct {

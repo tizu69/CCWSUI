@@ -48,10 +48,15 @@ window.ccwsui = {
 	shiftDown: false,
 	ctrlDown: false,
 	altDown: false,
+	user: crypto.randomUUID(),
 	async prepare() {
 		const font = new FontFace("CCWSUI", 'url("/static/font.ttf")');
 		await font.load();
 		document.fonts.add(font);
+
+		const storedUser = localStorage.getItem("ccwsui-user");
+		if (storedUser) this.user = storedUser;
+		else localStorage.setItem("ccwsui-user", this.user);
 
 		this.canvas.width = window.innerWidth;
 		this.canvas.height = window.innerHeight;

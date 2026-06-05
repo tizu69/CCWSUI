@@ -7,6 +7,7 @@ import (
 
 	"g.tizu.dev/CCWSUI/components"
 	"github.com/coder/websocket"
+	"github.com/google/uuid"
 )
 
 type jsapi struct {
@@ -20,6 +21,7 @@ type jsapi struct {
 	context          map[string]any
 	texBordersCache  map[string][4]int
 	ws               *websocket.Conn
+	useruuid         uuid.UUID
 }
 
 func NewJSAPI() *jsapi {
@@ -39,11 +41,16 @@ func NewJSAPI() *jsapi {
 	}))
 	<-wait
 
+	var err error
+	if j.useruuid, err = uuid.Parse(j.wrap.Get("user").String()); err != nil {
+		panic(err)
+	}
+
 	return j
 }
 
 func (j *jsapi) SocketURL() string {
-	return j.wrap.Get("socketURL").String()
+	return j.wrap.Get("socketURL").String() + "?user=" + j.useruuid.String()
 }
 
 func (j *jsapi) totalRerender(this js.Value, args []js.Value) any {

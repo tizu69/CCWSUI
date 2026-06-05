@@ -12,6 +12,7 @@ import (
 	"g.tizu.dev/CCWSUI/components"
 	"g.tizu.dev/CCWSUI/web/webmsg"
 	"github.com/coder/websocket"
+	"github.com/google/uuid"
 )
 
 //go:embed static/*
@@ -78,7 +79,12 @@ func (app *CCWSUI) handleRoomService(w http.ResponseWriter, r *http.Request) err
 	}
 	defer conn.CloseNow()
 
-	id, err := room.Add(conn)
+	userid, err := uuid.Parse(r.URL.Query().Get("user"))
+	if err != nil {
+		return err
+	}
+
+	id, err := room.Add(conn, userid)
 	if err != nil {
 		return err
 	}

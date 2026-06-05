@@ -1,11 +1,13 @@
 local expect = require "cc.expect"
 
 --- @alias CCWSUI.Handler<T> fun(ev: T)
+--- @alias CCWSUI.StateProxy table<string, any>
 
 --- @class CCWSUI
 --- @field backend string The backend WebSocket URL to connect to.
 --- @field textures table<string, string> A table of texture IDs to base64 encoded images.
---- @field private state table<string, table> The current state of the UI.
+--- @field private users table<string, string>
+--- @field private state table<string, CCWSUI.StateProxy>
 --- @field package handlers table<string, table<string, CCWSUI.Handler>>
 --- @field private ws table The WebSocket connection to the backend.
 --- @field render fun(self: CCWSUI, ctx: CCWSUI.Context): CCWSUI.Component A function that renders the UI.
@@ -35,6 +37,7 @@ function CCWSUI.new(wantedslug, backend)
 		backend = backend,
 		ws = ws,
 		textures = {},
+		users = {},
 		state = {},
 		handlers = {},
 	}, CCWSUI)
@@ -63,20 +66,13 @@ function CCWSUI:run()
 			local url = "http" .. secure .. "://" .. domain .. msg.d.url
 			self:ready(url)
 		elseif msg.t == 5 then -- Hello
-			local state = {}
-			self.state[msg.d.client] = setmetatable({}, {
-				__index = state,
-				__newindex = function(t, k, v)
-					if self.rerendering then
-						error("CCWSUI:render() may not modify state (deadlock).", 2)
-					end
-					state[k] = v
-					self:forceRender(msg.d.client)
-				end
-			})
+			self.users[msg.d.client] = msg.d.user
 			self:forceRender(msg.d.client)
 		elseif msg.t == 6 then -- Leave
-			self.state[msg.d.client] = nil
+			for _, state in pairs(self.state) do
+				state._listeners[msg.d.client] = nil
+			end
+			self.users[msg.d.client] = nil
 			self.handlers[msg.d.client] = nil
 		elseif msg.t == 7 then -- Event
 			os.queueEvent("ccwsui:event", msg.d.client, msg.d.event, msg.d.data)
@@ -90,22 +86,71 @@ function CCWSUI:run()
 	end
 end
 
---- Gets the state for a specific client.
---- @param client string The client ID to get the state for.
---- @return table|nil
-function CCWSUI:getState(client) return self.state[client] end
+--- Returns the user UUID for the given client UUID.
+--- @param client string
+--- @return string|nil
+function CCWSUI:getUser(client) return self.users[client] end
+
+--- Gets or creates a State proxy for the given key. Clients that are listening
+--- to this key will automatically be rerendered when a top-level value is
+--- modified.
+---
+--- ```lua
+--- local state = ui:getState("myState")
+--- state.foo = "bar" -- rerenders all clients listening to "myState"
+--- state.bar.baz = "qux" -- does NOT rerender
+--- ```
+---
+--- The key `user` is reserved for internal use. To match the behavior of ctx.s,
+--- use the key `"user:" .. ccwsui:getUser(client)`.
+---
+--- @param key string
+--- @return CCWSUI.StateProxy
+function CCWSUI:getState(key)
+	if key == "user" then error("Key 'user' is reserved for internal use.", 2) end
+	if not self.state[key] then
+		local backing = {}
+		self.state[key] = setmetatable({
+			_backing = backing,
+			_listeners = {},
+		}, {
+			__index = function(t, k)
+				if k:sub(1, 1) == "_" then return rawget(t, k) end
+				return backing[k]
+			end,
+			__newindex = function(t, k, v)
+				if k:sub(1, 1) == "_" then
+					rawset(t, k, v)
+					return
+				end
+				if self.rerendering then
+					error("CCWSUI:render() may not modify state (deadlock).", 2)
+				end
+				backing[k] = v
+				if t._listeners then
+					for client in pairs(t._listeners) do
+						self:forceRender(client)
+					end
+				end
+			end,
+			__pairs = function() return pairs(backing) end,
+		})
+		rawset(self.state[key], "_listeners", {})
+	end
+	return self.state[key]
+end
 
 --- @class CCWSUI.Context
 --- @field client string The client ID.
---- @field state table The state for the client.
 --- @field private inst CCWSUI
+--- @field user string The user ID.
 local Context = {}
 
 local function contextFrom(inst, client)
 	return setmetatable({
 		client = client,
-		state = inst.state[client],
-		inst = inst
+		inst = inst,
+		user = inst:getUser(client),
 	}, { __index = Context })
 end
 
@@ -117,10 +162,30 @@ function Context:addHandler(event, handler)
 	h[event] = handler
 end
 
+--- Returns a State proxy for the given key. As long as this method is called
+--- during a render, updates to this state will cause the client to re-render.
+---
+--- If no key is provided, a default key of `client:<ctx.client>` is used.
+--- If the provided key is exactly `user`, `user:<ctx.user>` is used.
+---
+--- @param key string|nil
+--- @return CCWSUI.StateProxy
+function Context:s(key)
+	key = key or ("client:" .. self.client)
+	if key == "user" then key = "user:" .. self.user end
+	local s = self.inst:getState(key)
+	s._listeners[self.client] = true
+	return s
+end
+
 --- Forces a render for a specific client.
 --- @param client string The client ID to force render for.
 function CCWSUI:forceRender(client)
 	expect(1, client, "string")
+	-- reset per-render listener subscriptions; ctx:state() re-populates it
+	for _, state in pairs(self.state) do
+		state._listeners[client] = nil
+	end
 	self.rerendering = true
 	self.handlers[client] = {}
 	local root = self:render(contextFrom(self, client))
