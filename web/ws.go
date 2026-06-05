@@ -6,9 +6,12 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"net/http"
+	"time"
 
 	"g.tizu.dev/CCWSUI/components"
 	"g.tizu.dev/CCWSUI/web/webmsg"
+	"github.com/coder/websocket"
 )
 
 func (j *jsapi) startReceiveLoop() {
@@ -65,4 +68,47 @@ func mustMarshal(v any) json.RawMessage {
 		panic(err)
 	}
 	return b
+}
+
+func (j *jsapi) run() {
+	const maxBackoff = 30 * time.Second
+	backoff := time.Duration(0)
+	j.wrap.Call("setConnectionStatus", "connecting")
+	for {
+		j.Root = nil
+		j.context = make(map[string]any)
+		j.texBordersCache = make(map[string][4]int)
+
+		if r, _ := http.Get(j.ValidateSocketURL()); r != nil && r.StatusCode == 404 {
+			j.wrap.Call("setConnectionStatus", "notfound")
+		}
+
+		ws, _, err := websocket.Dial(context.Background(), j.SocketURL(), &websocket.DialOptions{})
+		if err != nil {
+			slog.Error("Failed to connect to gateway", "err", err)
+			if backoff == 0 {
+				backoff = time.Second
+			}
+			time.Sleep(backoff)
+			backoff *= 2
+			if backoff > maxBackoff {
+				backoff = maxBackoff
+			}
+			continue
+		}
+		ws.SetReadLimit(1024 * 1024)
+
+		old := j.ws
+		j.ws = ws
+		if old != nil {
+			old.Close(websocket.StatusNormalClosure, "reconnecting")
+		}
+
+		j.wrap.Call("setConnectionStatus", "connected")
+		backoff = 0
+		slog.Info("Connected to gateway!", "url", j.SocketURL())
+		j.startReceiveLoop()
+		slog.Warn("Gateway disconnected, reconnecting...")
+		j.wrap.Call("setConnectionStatus", "reconnecting")
+	}
 }

@@ -4,6 +4,7 @@ local expect = require "cc.expect"
 --- @alias CCWSUI.StateProxy table<string, any>
 
 --- @class CCWSUI
+--- @field private wantedslug string|nil
 --- @field backend string The backend WebSocket URL to connect to.
 --- @field textures table<string, string> A table of texture IDs to base64 encoded images.
 --- @field private users table<string, string>
@@ -11,8 +12,9 @@ local expect = require "cc.expect"
 --- @field package handlers table<string, table<string, CCWSUI.Handler>>
 --- @field private ws table The WebSocket connection to the backend.
 --- @field render fun(self: CCWSUI, ctx: CCWSUI.Context): CCWSUI.Component A function that renders the UI.
---- @field ready fun(self: CCWSUI, url: string)
+--- @field ready fun(self: CCWSUI, url: string) Gets called when the UI is ready to be used. May be called more than once if the connection drops.
 --- @field private rerendering boolean Whether the UI is currently being rerendered.
+--- @field private retryDelay number
 --- @field error string|nil
 local CCWSUI = {}
 CCWSUI.__index = CCWSUI
@@ -35,11 +37,13 @@ function CCWSUI.new(wantedslug, backend)
 	end
 	return setmetatable({
 		backend = backend,
+		wantedslug = wantedslug,
 		ws = ws,
 		textures = {},
 		users = {},
 		state = {},
 		handlers = {},
+		retryDelay = 0,
 	}, CCWSUI)
 end
 
@@ -49,40 +53,66 @@ end
 function CCWSUI:run()
 	if not self.render then error("CCWSUI:render is not set!", 2) end
 	if not self.ready then error("CCWSUI:ready is not set!", 2) end
+	self.retryDelay = 0
 	self.ws.send(textutils.serializeJSON({ t = 3 })) -- freeze
 	while true do
 		local jmsg, err = self.ws.receive()
 		if err then
 			self.error = err
 			return
-		end
-		if jmsg == nil then
+		elseif jmsg == nil then
 			self.error = "Connection closed"
-			return
-		end
-		local msg = textutils.unserializeJSON(jmsg)
-		if msg.t == 4 then -- Ready
-			local secure, domain = self.backend:match("^ws(s?)://([^/]+)")
-			local url = "http" .. secure .. "://" .. domain .. msg.d.url
-			self:ready(url)
-		elseif msg.t == 5 then -- Hello
-			self.users[msg.d.client] = msg.d.user
-			self:forceRender(msg.d.client)
-		elseif msg.t == 6 then -- Leave
-			for _, state in pairs(self.state) do
-				state._listeners[msg.d.client] = nil
-			end
-			self.users[msg.d.client] = nil
-			self.handlers[msg.d.client] = nil
-		elseif msg.t == 7 then -- Event
-			os.queueEvent("ccwsui:event", msg.d.client, msg.d.event, msg.d.data)
-			if self.handlers[msg.d.client] and self.handlers[msg.d.client][msg.d.event] then
-				self.handlers[msg.d.client][msg.d.event](msg.d.data)
-			end
+			self:reconnect()
 		else
-			self.error = "Got unknown message type: " .. msg.t
+			self.retryDelay = 0
+			local msg = textutils.unserializeJSON(jmsg)
+			if msg.t == 4 then -- Ready
+				local secure, domain = self.backend:match("^ws(s?)://([^/]+)")
+				local url = "http" .. secure .. "://" .. domain .. msg.d.url
+				self:ready(url)
+			elseif msg.t == 5 then -- Hello
+				self.users[msg.d.client] = msg.d.user
+				self:forceRender(msg.d.client)
+			elseif msg.t == 6 then -- Leave
+				for _, state in pairs(self.state) do
+					state._listeners[msg.d.client] = nil
+				end
+				self.users[msg.d.client] = nil
+				self.handlers[msg.d.client] = nil
+			elseif msg.t == 7 then -- Event
+				os.queueEvent("ccwsui:event", msg.d.client, msg.d.event, msg.d.data)
+				if self.handlers[msg.d.client] and self.handlers[msg.d.client][msg.d.event] then
+					self.handlers[msg.d.client][msg.d.event](msg.d.data)
+				end
+			else
+				self.error = "Got unknown message type: " .. msg.t
+				return
+			end
+		end
+	end
+end
+
+--- Reconnects to the backend with exponential backoff (maximum of 30s).
+--- On success, re-sends slug and freeze, updates self.ws, and returns.
+function CCWSUI:reconnect()
+	if self.retryDelay == 0 then self.retryDelay = 1 end
+	while true do
+		local delay = math.min(self.retryDelay, 30)
+		sleep(delay)
+
+		local ws, err = http.websocket(self.backend .. "/host")
+		if ws then
+			if self.wantedslug then
+				ws.send(textutils.serializeJSON({ t = 2, d = { slug = self.wantedslug } }))
+			end
+			ws.send(textutils.serializeJSON({ t = 3 })) -- freeze
+			self.ws = ws
+			self.error = nil
+			self.retryDelay = 0
 			return
 		end
+		self.error = err
+		self.retryDelay = math.min(self.retryDelay * 2, 30)
 	end
 end
 
@@ -127,6 +157,7 @@ function CCWSUI:getState(key)
 					error("CCWSUI:render() may not modify state (deadlock).", 2)
 				end
 				backing[k] = v
+				os.queueEvent("ccwsui:stateupdate", key, k)
 				if t._listeners then
 					for client in pairs(t._listeners) do
 						self:forceRender(client)

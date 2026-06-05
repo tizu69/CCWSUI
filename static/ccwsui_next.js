@@ -13,6 +13,10 @@ window.ccwsui = {
 		// AIR seems not support WebSocket, so we use the "real" port for it.
 		`ws://${window.location.hostname}:${window.location.port == 8081 ? 8080 : window.location.port}` +
 		document.getElementById("ccwsui-socketurl").textContent,
+	validateSocketURL:
+		`http://${window.location.hostname}:${window.location.port}` +
+		document.getElementById("ccwsui-socketurl").textContent +
+		"/validate",
 
 	totalRerender(reason) {
 		throw new Error("Go wasm not initialized!");
@@ -120,6 +124,23 @@ window.ccwsui = {
 		});
 
 		requestAnimationFrame(this._rerenderAnimationFrame.bind(this));
+	},
+
+	setConnectionStatus(status) {
+		document.getElementById("ccwsui-connection-status-element")?.remove();
+		if (status === "connected") return;
+		const template = document.getElementById("ccwsui-connection-status");
+		const clone = template.content.cloneNode(true);
+		const el = clone.firstElementChild;
+		el.id = "ccwsui-connection-status-element";
+		el.textContent =
+			status === "notfound"
+				? "There does not appear to be a CCWSUI here. Did you typo the URL, and are you sure the server is running?"
+				: status === "connecting"
+					? "Attempting to connect..."
+					: "Attempting to reconnect...";
+		document.body.appendChild(clone);
+		this.queueRerender("Connection status changed");
 	},
 
 	getDimensions() {
@@ -620,6 +641,8 @@ window.ccwsui = {
 		return { r, g, b, a };
 	},
 };
+
+window.ccwsui.setConnectionStatus("connecting");
 
 const go = new Go();
 WebAssembly.instantiateStreaming(

@@ -53,6 +53,10 @@ func (j *jsapi) SocketURL() string {
 	return j.wrap.Get("socketURL").String() + "?user=" + j.useruuid.String()
 }
 
+func (j *jsapi) ValidateSocketURL() string {
+	return j.wrap.Get("validateSocketURL").String()
+}
+
 func (j *jsapi) totalRerender(this js.Value, args []js.Value) any {
 	j.TotalRerender(args[0].String())
 	return nil

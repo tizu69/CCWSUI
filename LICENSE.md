@@ -1,6 +1,4 @@
-**Code outside of `/static` is licensed under the following license:**
-
-The JSON License
+The JSON License applies to all files except those explicitly listed below.
 
 Copyright (c) 2025 Ruby <mods@tizu.dev>
 
@@ -27,10 +25,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ---
 
-As for inside of static...:
+External Assets
 
-- HTMX & extensions are licensed under the Zero-Clause BSD.
-- Mojangles (`font.ttf`) is licensed under the [Minecraft Usage Guidelines].
+- Mojangles (`static/font.ttf`) is licensed under [Minecraft Usage Guidelines].
   Obtained from https://github.com/tryashtar/minecraft-ttf
+- wasm_exec.js (`static/wasm_exec.js`) is licensed under [Go License].
 
 [Minecraft Usage Guidelines]: https://www.minecraft.net/en-us/usage-guidelines
+[Go License]: https://github.com/golang/go/blob/master/LICENSE

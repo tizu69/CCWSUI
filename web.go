@@ -23,6 +23,7 @@ func (app *CCWSUI) Run() {
 	mux.Handle("/{$}", Handler(app.handleRoot))
 	mux.Handle("GET /r/{room}", Handler(app.handleRoom))
 	mux.Handle("GET /r/{room}/service", Handler(app.handleRoomService))
+	mux.Handle("GET /r/{room}/service/validate", Handler(app.handleRoomServiceValidate))
 	mux.Handle("GET /host", Handler(app.handleHost))
 	mux.Handle("GET /static/", http.FileServer(http.FS(staticFS)))
 
@@ -52,14 +53,8 @@ func (app *CCWSUI) handleRoot(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (app *CCWSUI) handleRoom(w http.ResponseWriter, r *http.Request) error {
-	room := app.room(r.PathValue("room"))
-	if room == nil {
-		http.Error(w, "Room not found", http.StatusNotFound)
-		return nil
-	}
-
 	return components.Root(fmt.Sprintf("/r/%s/service",
-		url.PathEscape(room.ID)), room.Title, w)
+		url.PathEscape(r.PathValue("room"))), "CCWSUI", w)
 }
 
 func (app *CCWSUI) handleRoomService(w http.ResponseWriter, r *http.Request) error {
@@ -114,4 +109,14 @@ func (app *CCWSUI) handleRoomService(w http.ResponseWriter, r *http.Request) err
 	}
 
 	return nil
+}
+
+func (app *CCWSUI) handleRoomServiceValidate(w http.ResponseWriter, r *http.Request) error {
+	room := app.room(r.PathValue("room"))
+	if room == nil {
+		http.Error(w, "Room not found", http.StatusNotFound)
+		return nil
+	}
+	_, err := w.Write([]byte("OK"))
+	return err
 }

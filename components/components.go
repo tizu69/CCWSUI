@@ -20,6 +20,9 @@ var rootTemplate, _ = template.New("root").Parse(`
 </head>
 <body>
 	<canvas id="ccwsui-root"></canvas>
+	<template id="ccwsui-connection-status">
+		<div class="ccwsui-connection-status">Connecting...</div>
+	</template>
 </body>
 </html>
 `)

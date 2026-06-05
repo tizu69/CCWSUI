@@ -1,20 +1,5 @@
-@font-face {
-	font-family: "CCWSUI";
-	src: url("/static/font.ttf");
-}
-
 :root {
-	--font-scale: 3;
-
-	font-family: CCWSUI, sans-serif;
-	font-size: calc(12px * var(--font-scale));
-	line-height: calc(9px * var(--font-scale));
-	--px: calc(1px * var(--font-scale));
-
-	color: white;
-
 	background-color: #101010;
-	background-size: calc(var(--px) * 16);
 }
 
 *,
@@ -26,25 +11,7 @@
 	margin: 0;
 	padding: 0;
 	border: 0 solid;
-	image-rendering: pixelated;
 	user-select: none;
-}
-
-button,
-input,
-select,
-optgroup,
-textarea,
-::file-selector-button {
-	font: inherit;
-	font-feature-settings: inherit;
-	font-variation-settings: inherit;
-	letter-spacing: inherit;
-	color: inherit;
-	border-radius: 0;
-	background-color: transparent;
-	opacity: 1;
-	outline: none;
 }
 
 #ccwsui-root {
@@ -52,24 +19,6 @@ textarea,
 	height: 100dvh;
 	display: flex;
 	touch-action: none;
-}
-#ccwsui-hires {
-	position: absolute;
-	inset: 0;
-}
-
-[data-ccwsui] {
-	width: fit-content;
-}
-
-[data-ccwsui="inputregion"] {
-	caret-color: #ff000000;
-	position: relative;
-}
-
-[data-ccwsui-shadow] {
-	text-shadow: color-mix(in srgb, currentColor 25%, #000000) var(--px)
-		var(--px);
 }
 
 .ccwsui-layout-tree-overlay {
@@ -90,4 +39,22 @@ textarea,
 .ccwsui-layout-tree-overlay:hover + .ccwsui-layout-tree-title,
 .ccwsui-layout-tree-title:hover {
 	display: block;
+}
+
+.ccwsui-connection-status {
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+
+	background: #36363a;
+	color: #ffffff;
+	padding: 24px 32px;
+	border-radius: 12px;
+	z-index: 9999;
+	border: 2px solid #444448;
+	box-shadow: 0 0 10px rgba(0, 0, 0, 0.25);
+	max-width: 320px;
+	text-align: center;
+	text-wrap: pretty;
 }
