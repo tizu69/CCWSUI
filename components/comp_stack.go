@@ -38,115 +38,135 @@ func (c Stack) Measure(ctx MeasureContext, constraint Size) Size {
 	if len(c.Children) == 0 {
 		return Size{}
 	}
+	totalPadding := (len(c.Children) - 1) * c.Padding
 	if c.Direction == StackDirectionH {
-		totalW := 0
+		totalIdeal := 0
 		maxH := 0
-		for i, child := range c.Children {
+
+		for _, child := range c.Children {
 			if isStackRest(child) {
 				cs := child.Measure(ctx, Size{W: 0, H: constraint.H})
 				maxH = max(maxH, cs.H)
 				continue
 			}
 			cs := child.Measure(ctx, constraint)
-			totalW += cs.W
-			if i > 0 {
-				totalW += c.Padding
-			}
+			totalIdeal += cs.W
 			maxH = max(maxH, cs.H)
 		}
-		return Size{W: totalW, H: maxH}
+
+		availW := max(0, constraint.W-totalPadding)
+		totalW := totalIdeal
+		if totalIdeal > availW {
+			totalW = availW
+		}
+
+		return Size{W: totalW + totalPadding, H: maxH}
 	} else {
-		totalH := 0
+		totalIdeal := 0
 		maxW := 0
-		for i, child := range c.Children {
+
+		for _, child := range c.Children {
 			if isStackRest(child) {
 				cs := child.Measure(ctx, Size{W: constraint.W, H: 0})
 				maxW = max(maxW, cs.W)
 				continue
 			}
 			cs := child.Measure(ctx, constraint)
-			totalH += cs.H
-			if i > 0 {
-				totalH += c.Padding
-			}
+			totalIdeal += cs.H
 			maxW = max(maxW, cs.W)
 		}
-		return Size{W: maxW, H: totalH}
+
+		availH := max(0, constraint.H-totalPadding)
+		totalH := totalIdeal
+		if totalIdeal > availH {
+			totalH = availH
+		}
+
+		return Size{W: maxW, H: totalH + totalPadding}
 	}
 }
 
 func (c Stack) Layout(ctx LayoutContext, rect Rect) LayoutNode {
-	children := make([]LayoutNode, 0, len(c.Children))
 	constraint := Size{W: max(0, rect.W), H: max(0, rect.H)}
 	if c.Direction == StackDirectionH {
-		fixedW := 0
-		totalRest := 0
-		for _, child := range c.Children {
-			if isStackRest(child) {
-				totalRest++
-				continue
-			}
-			cs := child.Measure(ctx, constraint)
-			fixedW += cs.W
-		}
+		return c.layoutAlong(ctx, rect, constraint,
+			func(s Size) int { return s.W },
+			func(r Rect) int { return r.X },
+			func(r *Rect, v int) { r.X = v },
+			func(r *Rect, v int) { r.W = v },
+		)
+	}
+	return c.layoutAlong(ctx, rect, constraint,
+		func(s Size) int { return s.H },
+		func(r Rect) int { return r.Y },
+		func(r *Rect, v int) { r.Y = v },
+		func(r *Rect, v int) { r.H = v },
+	)
+}
 
-		remainingW := max(0, rect.W-fixedW-max(0, len(c.Children)-1)*c.Padding)
-		x := rect.X
-		if totalRest == 0 && c.Align != 0 {
-			used := fixedW + max(0, len(c.Children)-1)*c.Padding
-			extra := max(0, rect.W-used)
-			x += int(float32(extra) * float32(c.Align))
-		}
+func (c Stack) layoutAlong(ctx LayoutContext, rect Rect, constraint Size,
+	mainDim func(Size) int,
+	getPos func(Rect) int,
+	setPos func(*Rect, int),
+	setDim func(*Rect, int),
+) LayoutNode {
+	children := make([]LayoutNode, 0, len(c.Children))
+	totalPadding := (len(c.Children) - 1) * c.Padding
 
+	fixedMain := 0
+	totalRest := 0
+	for _, child := range c.Children {
+		if isStackRest(child) {
+			totalRest++
+			continue
+		}
+		fixedMain += mainDim(child.Measure(ctx, constraint))
+	}
+
+	mainConstraint := mainDim(constraint)
+	availMain := max(0, mainConstraint-totalPadding)
+	pos := getPos(rect)
+
+	if fixedMain > availMain {
 		for i, child := range c.Children {
-			w := 0
-			if isStackRest(child) {
-				w = remainingW / totalRest
-			} else {
-				w = child.Measure(ctx, constraint).W
+			m := 0
+			if !isStackRest(child) {
+				ideal := mainDim(child.Measure(ctx, constraint))
+				m = ideal * availMain / fixedMain
 			}
-			childRect := Rect{X: x, Y: rect.Y, W: w, H: rect.H}
+			childRect := rect
+			setPos(&childRect, pos)
+			setDim(&childRect, m)
 			children = append(children, child.Layout(ctx, childRect))
-			x += w
+			pos += m
 			if i < len(c.Children)-1 {
-				x += c.Padding
+				pos += c.Padding
 			}
 		}
 	} else {
-		fixedH := 0
-		totalRest := 0
-		for _, child := range c.Children {
-			if isStackRest(child) {
-				totalRest++
-				continue
-			}
-			cs := child.Measure(ctx, constraint)
-			fixedH += cs.H
-		}
-
-		remainingH := max(0, rect.H-fixedH-max(0, len(c.Children)-1)*c.Padding)
-		y := rect.Y
+		remainingMain := max(0, mainConstraint-fixedMain-totalPadding)
 		if totalRest == 0 && c.Align != 0 {
-			used := fixedH + max(0, len(c.Children)-1)*c.Padding
-			extra := max(0, rect.H-used)
-			y += int(float32(extra) * float32(c.Align))
+			extra := max(0, availMain-fixedMain)
+			pos += int(float32(extra) * float32(c.Align))
 		}
-
 		for i, child := range c.Children {
-			h := 0
+			m := 0
 			if isStackRest(child) {
-				h = remainingH / totalRest
+				m = remainingMain / totalRest
 			} else {
-				h = child.Measure(ctx, constraint).H
+				m = mainDim(child.Measure(ctx, constraint))
 			}
-			childRect := Rect{X: rect.X, Y: y, W: rect.W, H: h}
+			childRect := rect
+			setPos(&childRect, pos)
+			setDim(&childRect, m)
 			children = append(children, child.Layout(ctx, childRect))
-			y += h
+			pos += m
 			if i < len(c.Children)-1 {
-				y += c.Padding
+				pos += c.Padding
 			}
 		}
 	}
+
 	return LayoutNode{
 		Rect: rect, Children: children,
 		Title: fmt.Sprintf("Stack (%s x%d)", c.Direction, len(c.Children)),
