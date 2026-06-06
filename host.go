@@ -19,7 +19,7 @@ func (app *CCWSUI) handleHost(w http.ResponseWriter, r *http.Request) error {
 	}
 	defer conn.Close(websocket.StatusInternalError, "Internal Server Error")
 
-	room := NewRoom(conn, components.LiteralOf("Waiting for host..."))
+	room := NewRoom(conn, components.MkLiteral("Waiting for host..."))
 	defer func() {
 		if room.ID != "" {
 			app.roomsmu.Lock()

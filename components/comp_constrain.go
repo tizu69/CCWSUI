@@ -14,7 +14,7 @@ func init() {
 	RegisterWire("constrain", ConstrainFromWire)
 }
 
-func Constrained(w, h int, child Native) Constrain {
+func MkConstrain(w, h int, child Native) Constrain {
 	return Constrain{W: w, H: h, Child: child}
 }
 

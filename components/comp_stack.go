@@ -16,11 +16,21 @@ func init() {
 	RegisterWire("stack", StackFromWire)
 }
 
-func StackH(children ...Native) Stack { return Stack{Direction: StackDirectionH, Children: children} }
-func StackV(children ...Native) Stack { return Stack{Direction: StackDirectionV, Children: children} }
+func MkStackH(children ...Native) Stack { return Stack{Direction: StackDirectionH, Children: children} }
+func MkStackV(children ...Native) Stack { return Stack{Direction: StackDirectionV, Children: children} }
 
-func (c Stack) WithPadding(padding int) Stack {
+func (c Stack) WithChildren(children ...Native) Stack {
+	c.Children = append(c.Children, children...)
+	return c
+}
+
+func (c Stack) WithGap(padding int) Stack {
 	c.Padding = padding
+	return c
+}
+
+func (c Stack) WithAlign(align Alignment) Stack {
+	c.Align = align
 	return c
 }
 

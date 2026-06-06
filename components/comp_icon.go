@@ -15,28 +15,28 @@ func init() {
 	RegisterWire("icon", IconFromWire)
 }
 
-func Icony(icon string) Icon { return Icon{Icon: icon} }
+func MkIcon(icon string) Icon { return Icon{Icon: icon} }
 
-func (c Icon) Tinted(tint color.RGBA) Icon {
+func (c Icon) WithTint(tint color.RGBA) Icon {
 	c.Icon += fmt.Sprintf(";tint=#%02x%02x%02x%02x", tint.R, tint.G, tint.B, tint.A)
 	return c
 }
 
-func (c Icon) TintedHex(hex string) Icon {
-	return c.Tinted(colorFromHex(hex))
+func (c Icon) WithTintHex(hex string) Icon {
+	return c.WithTint(colorFromHex(hex))
 }
 
-func (c Icon) Rotate(rot Rotation) Icon {
+func (c Icon) WithRotation(rot Rotation) Icon {
 	c.Icon += fmt.Sprintf(";rotate=%d", rot)
 	return c
 }
 
-func (c Icon) Flip(flip Flip) Icon {
+func (c Icon) WithFlip(flip Flip) Icon {
 	c.Icon += fmt.Sprintf(";flip=%s", flip)
 	return c
 }
 
-func (c Icon) SetShadow(v bool) Icon {
+func (c Icon) WithShadow() Icon {
 	c.Shadow = true
 	return c
 }

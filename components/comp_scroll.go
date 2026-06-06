@@ -16,7 +16,7 @@ func init() {
 	RegisterWire("scroll", ScrollFromWire)
 }
 
-func Scrolling(id string, direction Direction, child Native) Scroll {
+func MkScroll(id string, direction Direction, child Native) Scroll {
 	return Scroll{ID: id, Direction: direction, Child: child, Step: 8}
 }
 
@@ -24,7 +24,7 @@ type scrollCtx struct {
 	X, Y int
 }
 
-func (c Scroll) SetStep(step int) Scroll {
+func (c Scroll) WithStep(step int) Scroll {
 	c.Step = step
 	return c
 }

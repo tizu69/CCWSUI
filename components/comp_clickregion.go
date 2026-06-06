@@ -14,7 +14,7 @@ func init() {
 	RegisterWire("clickregion", ClickRegionFromWire)
 }
 
-func Clickable(event string, child Native) ClickRegion {
+func MkClickRegion(event string, child Native) ClickRegion {
 	return ClickRegion{Event: event, Child: child}
 }
 

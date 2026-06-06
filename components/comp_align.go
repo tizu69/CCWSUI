@@ -14,10 +14,10 @@ func init() {
 	RegisterWire("align", AlignFromWire)
 }
 
-func Aligned(x, y Alignment, child Native) Align { return Align{X: x, Y: y, Child: child} }
-func AlignedX(x Alignment, child Native) Align   { return Aligned(x, AlignmentCenter, child) }
-func AlignedY(y Alignment, child Native) Align   { return Aligned(AlignmentCenter, y, child) }
-func AlignedCenter(child Native) Align           { return Aligned(AlignmentCenter, AlignmentCenter, child) }
+func MkAlign(x, y Alignment, child Native) Align { return Align{X: x, Y: y, Child: child} }
+func MkAlignX(x Alignment, child Native) Align   { return MkAlign(x, AlignmentCenter, child) }
+func MkAlignY(y Alignment, child Native) Align   { return MkAlign(AlignmentCenter, y, child) }
+func MkAlignCenter(child Native) Align           { return MkAlign(AlignmentCenter, AlignmentCenter, child) }
 
 func (c Align) Measure(ctx MeasureContext, constraint Size) Size {
 	return c.Child.Measure(ctx, constraint)

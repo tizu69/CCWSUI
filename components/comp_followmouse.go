@@ -14,12 +14,12 @@ func init() {
 	RegisterWire("followmouse", FollowMouseFromWire)
 }
 
-func FollowsMouse(x, y Alignment, child Native) FollowMouse {
+func MkFollowMouse(x, y Alignment, child Native) FollowMouse {
 	return FollowMouse{X: x, Y: y, Child: child}
 }
 
-func (c FollowMouse) FlipIfOverflowing(v bool) FollowMouse {
-	c.FlipIfOverflow = v
+func (c FollowMouse) WithFlipIfOverflow() FollowMouse {
+	c.FlipIfOverflow = true
 	return c
 }
 

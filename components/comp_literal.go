@@ -29,13 +29,13 @@ func init() {
 	RegisterWire("literal", LiteralFromWire)
 }
 
-func LiteralOf(text string) Literal {
+func MkLiteral(text string) Literal {
 	return Literal{Pieces: []literalPiece{{
 		Text: text, Color: color.RGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff},
 	}}}
 }
 
-func (c Literal) Add(text string) Literal {
+func (c Literal) WithText(text string) Literal {
 	c.Pieces = append(c.Pieces, literalPiece{
 		Text: text, Color: color.RGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff},
 	})
@@ -83,22 +83,18 @@ func hexToByte(hex string) uint8 {
 	return uint8(b)
 }
 
-func (c Literal) WithColor(colr color.Color) Literal {
-	r, g, b, a := colr.RGBA()
-	c.Pieces[len(c.Pieces)-1].Color = color.RGBA{
-		R: uint8(r >> 8), G: uint8(g >> 8),
-		B: uint8(b >> 8), A: uint8(a >> 8),
-	}
+func (c Literal) WithColor(r, g, b, a uint8) Literal {
+	c.Pieces[len(c.Pieces)-1].Color = color.RGBA{R: r, G: g, B: b, A: a}
 	return c
 }
 
-func (c Literal) WithWrap(wrap bool) Literal {
-	c.Wrap = wrap
+func (c Literal) WithWrap() Literal {
+	c.Wrap = true
 	return c
 }
 
-func (c Literal) WithShadow(shadow bool) Literal {
-	c.Pieces[len(c.Pieces)-1].Shadow = shadow
+func (c Literal) WithShadow() Literal {
+	c.Pieces[len(c.Pieces)-1].Shadow = true
 	return c
 }
 

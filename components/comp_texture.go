@@ -12,7 +12,7 @@ type Texture struct {
 	Pad   bool
 }
 
-func Textured(tex string, child Native) Texture {
+func MkTexture(tex string, child Native) Texture {
 	return Texture{Tex: tex, Child: child}
 }
 
@@ -20,27 +20,27 @@ func init() {
 	RegisterWire("texture", TextureFromWire)
 }
 
-func (c Texture) Tinted(tint color.RGBA) Texture {
+func (c Texture) WithTint(tint color.RGBA) Texture {
 	c.Tex += fmt.Sprintf(";tint=#%02x%02x%02x%02x", tint.R, tint.G, tint.B, tint.A)
 	return c
 }
 
-func (c Texture) TintedHex(hex string) Texture {
-	return c.Tinted(colorFromHex(hex))
+func (c Texture) WithTintHex(hex string) Texture {
+	return c.WithTint(colorFromHex(hex))
 }
 
-func (c Texture) Remap(src, dst color.RGBA) Texture {
+func (c Texture) WithRemap(src, dst color.RGBA) Texture {
 	c.Tex += fmt.Sprintf(";#%02x%02x%02x%02x=#%02x%02x%02x%02x",
 		src.R, src.G, src.B, src.A, dst.R, dst.G, dst.B, dst.A)
 	return c
 }
 
-func (c Texture) RemapHex(src, dst string) Texture {
-	return c.Remap(colorFromHex(src), colorFromHex(dst))
+func (c Texture) WithRemapHex(src, dst string) Texture {
+	return c.WithRemap(colorFromHex(src), colorFromHex(dst))
 }
 
-func (c Texture) SetPad(pad bool) Texture {
-	c.Pad = pad
+func (c Texture) WithPad() Texture {
+	c.Pad = true
 	return c
 }
 

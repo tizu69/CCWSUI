@@ -14,7 +14,7 @@ func init() {
 	RegisterWire("itemtexture", ItemTextureFromWire)
 }
 
-func ItemTextured(item string) ItemTexture { return ItemTexture{Item: item} }
+func MkItemTexture(item string) ItemTexture { return ItemTexture{Item: item} }
 
 func (c ItemTexture) Measure(ctx MeasureContext, constraint Size) Size {
 	return Size{W: 16, H: 16}

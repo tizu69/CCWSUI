@@ -14,7 +14,7 @@ func init() {
 	RegisterWire("padding", PaddingFromWire)
 }
 
-func Padded(t, l, b, r int, child Native) Padding {
+func MkPadding(t, l, b, r int, child Native) Padding {
 	return Padding{T: t, L: l, B: b, R: r, Child: child}
 }
 

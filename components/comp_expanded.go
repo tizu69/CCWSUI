@@ -11,9 +11,9 @@ func init() {
 	RegisterWire("expanded", ExpandedFromWire)
 }
 
-func Expand(child Native) Expanded  { return Expanded{Child: child, Direction: DirectionHV} }
-func ExpandH(child Native) Expanded { return Expanded{Child: child, Direction: DirectionH} }
-func ExpandV(child Native) Expanded { return Expanded{Child: child, Direction: DirectionV} }
+func MkExpand(child Native) Expanded  { return Expanded{Child: child, Direction: DirectionHV} }
+func MkExpandH(child Native) Expanded { return Expanded{Child: child, Direction: DirectionH} }
+func MkExpandV(child Native) Expanded { return Expanded{Child: child, Direction: DirectionV} }
 
 func (c Expanded) Measure(ctx MeasureContext, constraint Size) Size {
 	switch c.Direction {

@@ -10,8 +10,8 @@ func init() {
 	RegisterWire("blank", BlankFromWire)
 }
 
-func Filler() Blank          { return Blank{} }
-func Blanked(w, h int) Blank { return Blank{W: w, H: h} }
+func MkBlank() Blank          { return Blank{} }
+func MkFiller(w, h int) Blank { return Blank{W: w, H: h} }
 
 func (c Blank) Measure(ctx MeasureContext, constraint Size) Size {
 	return Size{W: c.W, H: c.H}

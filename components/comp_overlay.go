@@ -14,12 +14,17 @@ func init() {
 	RegisterWire("overlay", OverlayFromWire)
 }
 
-func Overlaid(layers ...Native) Overlay {
+func MkOverlay(layers ...Native) Overlay {
 	return Overlay{Layers: layers}
 }
 
-func (c Overlay) RequireHover(v bool) Overlay {
-	c.HoverRequired = v
+func (c Overlay) WithChildren(children ...Native) Overlay {
+	c.Layers = append(c.Layers, children...)
+	return c
+}
+
+func (c Overlay) WithRequireHover() Overlay {
+	c.HoverRequired = true
 	return c
 }
 
