@@ -15,8 +15,8 @@ func init() {
 }
 
 func MkAlign(x, y Alignment, child Native) Align { return Align{X: x, Y: y, Child: child} }
-func MkAlignX(x Alignment, child Native) Align   { return MkAlign(x, AlignmentCenter, child) }
-func MkAlignY(y Alignment, child Native) Align   { return MkAlign(AlignmentCenter, y, child) }
+func MkAlignX(x Alignment, child Native) Align   { return MkAlign(x, AlignmentStart, child) }
+func MkAlignY(y Alignment, child Native) Align   { return MkAlign(AlignmentStart, y, child) }
 func MkAlignCenter(child Native) Align           { return MkAlign(AlignmentCenter, AlignmentCenter, child) }
 
 func (c Align) Measure(ctx MeasureContext, constraint Size) Size {

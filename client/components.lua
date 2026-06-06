@@ -97,7 +97,7 @@ function component:wrapAlign(x, y) return components.Align(x, y, self) end
 function components.AlignX(x, child)
 	return setmetatable({
 		kind = "align",
-		props = { X = x, Y = AlignmentCenter },
+		props = { X = x, Y = 0 },
 		children = { child },
 	}, { __index = Align })
 end
@@ -112,7 +112,7 @@ function component:wrapAlignX(x) return components.AlignX(x, self) end
 function components.AlignY(y, child)
 	return setmetatable({
 		kind = "align",
-		props = { X = AlignmentCenter, Y = y },
+		props = { X = 0, Y = y },
 		children = { child },
 	}, { __index = Align })
 end
