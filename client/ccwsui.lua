@@ -121,6 +121,14 @@ end
 --- @return string|nil
 function CCWSUI:getUser(client) return self.users[client] end
 
+--- Returns whether a state exists for the given key.
+--- @param key string
+--- @return boolean
+function CCWSUI:existsState(key)
+	if key == "user" then error("Key 'user' is reserved for internal use.", 2) end
+	return self.state[key] ~= nil
+end
+
 --- Gets or creates a State proxy for the given key. Clients that are listening
 --- to this key will automatically be rerendered when a top-level value is
 --- modified.
@@ -174,7 +182,7 @@ end
 --- @class CCWSUI.Context
 --- @field client string The client ID.
 --- @field private inst CCWSUI
---- @field user string The user ID.
+--- @field user string Unique to a user. May be shared across clients.
 local Context = {}
 
 local function contextFrom(inst, client)
@@ -213,6 +221,10 @@ end
 --- @param client string The client ID to force render for.
 function CCWSUI:forceRender(client)
 	expect(1, client, "string")
+
+	-- if disconnected, don't try to render
+	if self.retryDelay > 0 then return end
+
 	-- reset per-render listener subscriptions; ctx:state() re-populates it
 	for _, state in pairs(self.state) do
 		state._listeners[client] = nil

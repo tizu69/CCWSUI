@@ -11,6 +11,7 @@ import (
 
 	"g.tizu.dev/CCWSUI/components"
 	"g.tizu.dev/CCWSUI/web/webmsg"
+	"github.com/NYTimes/gziphandler"
 	"github.com/coder/websocket"
 	"github.com/google/uuid"
 )
@@ -25,7 +26,7 @@ func (app *CCWSUI) Run() {
 	mux.Handle("GET /r/{room}/service", Handler(app.handleRoomService))
 	mux.Handle("GET /r/{room}/service/validate", Handler(app.handleRoomServiceValidate))
 	mux.Handle("GET /host", Handler(app.handleHost))
-	mux.Handle("GET /static/", http.FileServer(http.FS(staticFS)))
+	mux.Handle("GET /static/", gziphandler.GzipHandler(http.FileServer(http.FS(staticFS))))
 
 	slog.Info("Listening!", "addr", app.addr)
 	if err := http.ListenAndServe(app.addr, mux); err != nil {

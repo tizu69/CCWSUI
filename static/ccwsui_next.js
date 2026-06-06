@@ -45,13 +45,20 @@ window.ccwsui = {
 	/** @type {HTMLCanvasElement} */
 	canvas: document.getElementById("ccwsui-root"),
 
+	shiftDown: false,
+	ctrlDown: false,
+	altDown: false,
+	/** @param {{shiftKey: boolean, ctrlKey: boolean, altKey: boolean}} e */
+	_updateModifiers(e) {
+		this.shiftDown = e.shiftKey;
+		this.ctrlDown = e.ctrlKey;
+		this.altDown = e.altKey;
+	},
+
 	mousePos: { x: -1, y: -1 },
 	mouseScroll: { dx: 0, dy: 0 },
 	mouseDown: false,
 	keysDown: new Set(),
-	shiftDown: false,
-	ctrlDown: false,
-	altDown: false,
 	user: crypto.randomUUID(),
 	async prepare() {
 		const font = new FontFace("CCWSUI", 'url("/static/font.ttf")');
@@ -73,9 +80,7 @@ window.ccwsui = {
 		});
 		window.addEventListener("keydown", (e) => {
 			this.keysDown.add(e.key);
-			this.shiftDown = e.shiftKey;
-			this.ctrlDown = e.ctrlKey;
-			this.altDown = e.altKey;
+			this._updateModifiers(e);
 			this.queueRerender("Key pressed");
 			if (!isDevtoolsShortcut(e)) return;
 			e.preventDefault();
@@ -83,25 +88,26 @@ window.ccwsui = {
 		});
 		window.addEventListener("keyup", (e) => {
 			this.keysDown.delete(e.key);
-			this.shiftDown = e.shiftKey;
-			this.ctrlDown = e.ctrlKey;
-			this.altDown = e.altKey;
+			this._updateModifiers(e);
 			this.queueRerender("Key released");
 		});
 		this.canvas.addEventListener("mousemove", (e) => {
+			this._updateModifiers(e);
 			this.mousePos = {
 				x: Math.floor(e.clientX / this.scale),
 				y: Math.floor(e.clientY / this.scale),
 			};
 			this.queueRerender("Mouse moved");
 		});
-		this.canvas.addEventListener("mouseout", () => {
+		this.canvas.addEventListener("mouseout", (e) => {
+			this._updateModifiers(e);
 			this.mousePos = { x: -1, y: -1 };
 			this.queueRerender("Mouse left");
 		});
 		this.canvas.addEventListener(
 			"wheel",
 			(e) => {
+				this._updateModifiers(e);
 				if (e.ctrlKey) {
 					e.preventDefault();
 					// zooming
@@ -119,6 +125,7 @@ window.ccwsui = {
 			{ passive: false },
 		);
 		this.canvas.addEventListener("mousedown", (e) => {
+			this._updateModifiers(e);
 			this.mouseDown = true;
 			this.queueRerender("Mouse down");
 		});

@@ -9,6 +9,7 @@ type Stack struct {
 	Direction StackDirection
 	Children  []Native `json:"-"`
 	Padding   int
+	Align     Alignment
 }
 
 func init() {
@@ -31,6 +32,9 @@ func (c Stack) Measure(ctx MeasureContext, constraint Size) Size {
 		totalW := 0
 		maxH := 0
 		for i, child := range c.Children {
+			if isStackRest(child) {
+				continue
+			}
 			cs := child.Measure(ctx, constraint)
 			totalW += cs.W
 			if i > 0 {
@@ -43,6 +47,9 @@ func (c Stack) Measure(ctx MeasureContext, constraint Size) Size {
 		totalH := 0
 		maxW := 0
 		for i, child := range c.Children {
+			if isStackRest(child) {
+				continue
+			}
 			cs := child.Measure(ctx, constraint)
 			totalH += cs.H
 			if i > 0 {
@@ -71,6 +78,12 @@ func (c Stack) Layout(ctx LayoutContext, rect Rect) LayoutNode {
 
 		remainingW := max(0, rect.W-fixedW-max(0, len(c.Children)-1)*c.Padding)
 		x := rect.X
+		if totalRest == 0 && c.Align != 0 {
+			used := fixedW + max(0, len(c.Children)-1)*c.Padding
+			extra := max(0, rect.W-used)
+			x += int(float32(extra) * float32(c.Align))
+		}
+
 		for i, child := range c.Children {
 			w := 0
 			if isStackRest(child) {
@@ -99,6 +112,12 @@ func (c Stack) Layout(ctx LayoutContext, rect Rect) LayoutNode {
 
 		remainingH := max(0, rect.H-fixedH-max(0, len(c.Children)-1)*c.Padding)
 		y := rect.Y
+		if totalRest == 0 && c.Align != 0 {
+			used := fixedH + max(0, len(c.Children)-1)*c.Padding
+			extra := max(0, rect.H-used)
+			y += int(float32(extra) * float32(c.Align))
+		}
+
 		for i, child := range c.Children {
 			h := 0
 			if isStackRest(child) {

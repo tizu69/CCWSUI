@@ -34,10 +34,10 @@
 	font: 12px monospace;
 	z-index: 999;
 	white-space: pre;
+	pointer-events: none;
 }
 
-.ccwsui-layout-tree-overlay:hover + .ccwsui-layout-tree-title,
-.ccwsui-layout-tree-title:hover {
+.ccwsui-layout-tree-overlay:hover {
 	display: block;
 }
 

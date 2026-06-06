@@ -2,6 +2,7 @@ package components
 
 import (
 	"encoding/json"
+	"fmt"
 	"image/color"
 	"strconv"
 	"strings"
@@ -106,6 +107,14 @@ func (c Literal) WithAlignment(alignment Alignment) Literal {
 	return c
 }
 
+func (c Literal) String() string {
+	var s string
+	for _, piece := range c.Pieces {
+		s += piece.Text
+	}
+	return s
+}
+
 func (c Literal) Measure(ctx MeasureContext, constraint Size) Size {
 	lines, longest := c.maybeWrap(ctx, constraint.W)
 	return Size{W: longest, H: len(lines) * ctx.GetLineHeight()}
@@ -115,7 +124,7 @@ func (c Literal) Layout(ctx LayoutContext, rect Rect) LayoutNode {
 	lines, longest := c.maybeWrap(ctx, rect.W)
 	return LayoutNode{Rect: Rect{
 		X: rect.X, Y: rect.Y, W: longest, H: len(lines) * ctx.GetLineHeight(),
-	}, Title: "Literal"}
+	}, Title: fmt.Sprintf("Literal (%q)", c.String())}
 }
 
 func (c Literal) Render(ctx RenderContext, layout LayoutNode) {

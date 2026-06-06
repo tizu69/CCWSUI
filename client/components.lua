@@ -3,12 +3,12 @@ local AlignmentStart = 0
 local AlignmentCenter = .5
 local AlignmentEnd = 1
 
----@alias CCWSUI.Direction string
+---@alias CCWSUI.Direction "h"|"v"|"hv"
 local DirectionH = "h"
 local DirectionV = "v"
 local DirectionHV = "hv"
 
----@alias CCWSUI.Flip string
+---@alias CCWSUI.Flip  ""|"x"|"y"
 local FlipNone = ""
 local FlipX = "x"
 local FlipY = "y"
@@ -19,7 +19,7 @@ local RotationR = 90
 local RotationD = 180
 local RotationL = 270
 
----@alias CCWSUI.StackDirection string
+---@alias CCWSUI.StackDirection "h"|"v"
 local StackDirectionH = "h"
 local StackDirectionV = "v"
 
@@ -394,10 +394,10 @@ function components.Overlay()
 	}, { __index = Overlay })
 end
 
----@param child CCWSUI.Component
-function Overlay:add(child)
+---@param ... CCWSUI.Component
+function Overlay:add(...)
 	if self.children == emptyarr then self.children = {} end
-	table.insert(self.children, child)
+	for _, child in ipairs({ ... }) do table.insert(self.children, child) end
 	return self
 end
 
@@ -415,7 +415,26 @@ local Padding = makecomp()
 ---@param r number
 ---@param child CCWSUI.Component
 ---@return Padding
+---@overload fun(x: number, y: number, child: CCWSUI.Component): Padding
+---@overload fun(all: number, child: CCWSUI.Component): Padding
 function components.Padding(t, l, b, r, child)
+	if child ~= nil then
+		-- Padding(t, l, b, r, child)
+	elseif b ~= nil then
+		-- Padding(x, y, child)
+		child = b --[[@as CCWSUI.Component]]
+		b = l
+		r = t
+		t = b
+		l = r
+	else
+		-- Padding(all, child)
+		child = l --[[@as CCWSUI.Component]]
+		l = t
+		b = t
+		r = t
+	end
+
 	return setmetatable({
 		kind = "padding",
 		props = { T = t, L = l, B = b, R = r },
@@ -428,7 +447,13 @@ end
 ---@param b number
 ---@param r number
 ---@return Padding
-function component:wrapPadding(t, l, b, r) return components.Padding(t, l, b, r, self) end
+---@overload fun(self: CCWSUI.Component, x: number, y: number): Padding
+---@overload fun(self: CCWSUI.Component, all: number): Padding
+function component:wrapPadding(t, l, b, r)
+	if l == nil then return components.Padding(t, self) end
+	if b == nil then return components.Padding(t, l, self) end
+	return components.Padding(t, l, b, r, self)
+end
 
 ---@class Scroll : CCWSUI.Component
 local Scroll = makecomp()
@@ -477,16 +502,22 @@ function components.StackV()
 	}, { __index = Stack })
 end
 
----@param child CCWSUI.Component
-function Stack:add(child)
+---@param ... CCWSUI.Component
+function Stack:add(...)
 	if self.children == emptyarr then self.children = {} end
-	table.insert(self.children, child)
+	for _, child in ipairs({ ... }) do table.insert(self.children, child) end
 	return self
 end
 
 ---@param gap number
 function Stack:gap(gap)
 	self.props.Padding = gap
+	return self
+end
+
+---@param align CCWSUI.Alignment
+function Stack:align(align)
+	self.props.Align = align
 	return self
 end
 
