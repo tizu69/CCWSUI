@@ -15,7 +15,6 @@ import (
 type Room struct {
 	ID       string
 	hostConn *websocket.Conn
-	Title    string
 	Root     components.Native
 
 	frozen     bool
@@ -25,10 +24,9 @@ type Room struct {
 	clientsMu sync.Mutex
 }
 
-func NewRoom(hostConn *websocket.Conn, title string, root components.Native) *Room {
+func NewRoom(hostConn *websocket.Conn, root components.Native) *Room {
 	return &Room{
 		hostConn: hostConn,
-		Title:    title,
 		Root:     root,
 		clients:  make(map[uuid.UUID]*roomClient),
 	}
@@ -124,6 +122,12 @@ type roomClient struct {
 
 func (c *roomClient) Update(root components.WireNode) error {
 	return webmsg.SendMsg(c.conn, webmsg.TypeUpdate, webmsg.Update{Root: root})
+}
+
+func (c *roomClient) UpdateMetadata(d HostMetadataPayload) error {
+	return webmsg.SendMsg(c.conn, webmsg.TypeMetadata, webmsg.Metadata{
+		Title: d.Title,
+	})
 }
 
 func (c *roomClient) Close() error {

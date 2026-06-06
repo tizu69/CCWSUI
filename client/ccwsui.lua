@@ -239,4 +239,21 @@ function CCWSUI:forceRender(client)
 	}))
 end
 
+---@class CCWSUI.Metadata
+---@field title string|nil
+
+--- Updates the metadata for a specific client. Unset field are kept unchanged.
+--- Use of a zero value (empty string, 0, false, etc) resets the field to its
+--- default value on the client side.
+--- @param client string The client ID to update metadata for.
+--- @return fun(d: CCWSUI.Metadata)
+function CCWSUI:updateMetadata(client)
+	return function(d)
+		self.ws.send(textutils.serializeJSON({
+			t = 8,
+			d = { client = client, title = d.title }
+		}))
+	end
+end
+
 return CCWSUI

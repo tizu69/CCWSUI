@@ -19,6 +19,7 @@ const (
 	HostMsgHello
 	HostMsgLeave
 	HostMsgEvent
+	HostMsgMetadata
 )
 
 // Host to Server
@@ -26,6 +27,11 @@ const (
 type HostUpdatePayload struct {
 	Client uuid.UUID           `json:"client"`
 	Root   components.WireNode `json:"root"`
+}
+
+type HostMetadataPayload struct {
+	Client uuid.UUID `json:"client"`
+	Title  *string   `json:"title,omitempty"`
 }
 
 type HostWantSlugPayload struct {

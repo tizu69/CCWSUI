@@ -11,9 +11,10 @@ import (
 type Type int
 
 const (
-	TypeUpdate  Type = iota + 1
+	TypeUpdate Type = iota + 1
 	TypeTexture
 	TypeEvent
+	TypeMetadata
 )
 
 type Envelope struct {
@@ -33,6 +34,10 @@ type Texture struct {
 type Event struct {
 	ID    string          `json:"id"`
 	Event json.RawMessage `json:"event"`
+}
+
+type Metadata struct {
+	Title *string `json:"title"`
 }
 
 func SendMsg(conn *websocket.Conn, typ Type, payload any) error {

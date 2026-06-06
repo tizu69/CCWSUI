@@ -43,6 +43,14 @@ func (j *jsapi) startReceiveLoop() {
 			j.Root = newroot
 			j.TotalRerender("Server-sent Tree Update")
 
+		case webmsg.TypeMetadata:
+			var d webmsg.Metadata
+			if err := json.Unmarshal(e.Data, &d); err != nil {
+				slog.Error("Failed to unmarshal update", "err", err)
+				continue
+			}
+			j.wrap.Call("updateMetadata", string(mustMarshal(d)))
+
 		case webmsg.TypeTexture:
 			var t webmsg.Texture
 			if err := json.Unmarshal(e.Data, &t); err != nil {

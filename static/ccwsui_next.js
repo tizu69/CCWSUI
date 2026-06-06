@@ -647,6 +647,13 @@ window.ccwsui = {
 		const a = parseInt(hex.slice(7, 9), 16) || 255;
 		return { r, g, b, a };
 	},
+
+	updateMetadata(djson) {
+		console.log("updateMetadata", djson);
+		const data = JSON.parse(djson);
+		if (data.title !== undefined)
+			document.title = data.title.trim() || "CCWSUI";
+	},
 };
 
 window.ccwsui.setConnectionStatus("connecting");

@@ -18,6 +18,10 @@ local function line(ctx)
 end
 
 function CCWSUI:render(ctx)
+	CCWSUI:updateMetadata(ctx.client) {
+		title = "Testing"
+	}
+
 	return c.StackV()
 		:add(line(ctx)
 			:wrapAlignCenter()

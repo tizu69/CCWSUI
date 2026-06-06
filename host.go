@@ -19,7 +19,7 @@ func (app *CCWSUI) handleHost(w http.ResponseWriter, r *http.Request) error {
 	}
 	defer conn.Close(websocket.StatusInternalError, "Internal Server Error")
 
-	room := NewRoom(conn, "CCWSUI", components.LiteralOf("Waiting for host..."))
+	room := NewRoom(conn, components.LiteralOf("Waiting for host..."))
 	defer func() {
 		if room.ID != "" {
 			app.roomsmu.Lock()
@@ -65,6 +65,20 @@ func (app *CCWSUI) handleHostMsg(room *Room, env HostEnvelope) error {
 			return nil
 		}
 		return c.Update(data.Root)
+
+	case HostMsgMetadata:
+		if !room.Frozen() {
+			return fmt.Errorf("room not yet frozen")
+		}
+		var data HostMetadataPayload
+		if err := json.Unmarshal(env.Data, &data); err != nil {
+			return err
+		}
+		c, ok := room.Get(data.Client)
+		if !ok {
+			return nil
+		}
+		return c.UpdateMetadata(data)
 
 	case HostMsgWantSlug:
 		if room.Frozen() {
