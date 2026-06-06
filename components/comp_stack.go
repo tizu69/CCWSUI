@@ -43,6 +43,8 @@ func (c Stack) Measure(ctx MeasureContext, constraint Size) Size {
 		maxH := 0
 		for i, child := range c.Children {
 			if isStackRest(child) {
+				cs := child.Measure(ctx, Size{W: 0, H: constraint.H})
+				maxH = max(maxH, cs.H)
 				continue
 			}
 			cs := child.Measure(ctx, constraint)
@@ -58,6 +60,8 @@ func (c Stack) Measure(ctx MeasureContext, constraint Size) Size {
 		maxW := 0
 		for i, child := range c.Children {
 			if isStackRest(child) {
+				cs := child.Measure(ctx, Size{W: constraint.W, H: 0})
+				maxW = max(maxW, cs.W)
 				continue
 			}
 			cs := child.Measure(ctx, constraint)
