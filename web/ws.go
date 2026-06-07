@@ -46,7 +46,7 @@ func (j *jsapi) startReceiveLoop() {
 		case webmsg.TypeMetadata:
 			var d webmsg.Metadata
 			if err := json.Unmarshal(e.Data, &d); err != nil {
-				slog.Error("Failed to unmarshal update", "err", err)
+				slog.Error("Failed to unmarshal metadata", "err", err)
 				continue
 			}
 			j.wrap.Call("updateMetadata", string(mustMarshal(d)))
@@ -59,6 +59,14 @@ func (j *jsapi) startReceiveLoop() {
 			}
 			j.wrap.Get("userTextures").Set(t.ID, t.Data)
 			j.TotalRerender("Server-sent Texture Update")
+
+		case webmsg.TypeRedirect:
+			var d webmsg.Redirect
+			if err := json.Unmarshal(e.Data, &d); err != nil {
+				slog.Error("Failed to unmarshal redirect", "err", err)
+				continue
+			}
+			j.wrap.Call("redirect", d.URL)
 		}
 	}
 }

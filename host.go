@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	"g.tizu.dev/CCWSUI/components"
 	"github.com/coder/websocket"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
@@ -19,7 +18,7 @@ func (app *CCWSUI) handleHost(w http.ResponseWriter, r *http.Request) error {
 	}
 	defer conn.Close(websocket.StatusInternalError, "Internal Server Error")
 
-	room := NewRoom(conn, components.MkLiteral("Waiting for host..."))
+	room := NewRemoteRoom(conn)
 	defer func() {
 		if room.ID != "" {
 			app.roomsmu.Lock()

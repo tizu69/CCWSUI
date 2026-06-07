@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"g.tizu.dev/CCWSUI/components"
+	"g.tizu.dev/CCWSUI/predefined"
 	"g.tizu.dev/CCWSUI/web/webmsg"
 	"github.com/coder/websocket"
 	"github.com/google/uuid"
@@ -15,7 +16,7 @@ import (
 type Room struct {
 	ID       string
 	hostConn *websocket.Conn
-	Root     components.Native
+	predef   predefined.Room
 
 	frozen     bool
 	wantedSlug string
@@ -24,12 +25,22 @@ type Room struct {
 	clientsMu sync.Mutex
 }
 
-func NewRoom(hostConn *websocket.Conn, root components.Native) *Room {
+func NewRemoteRoom(hostConn *websocket.Conn) *Room {
 	return &Room{
 		hostConn: hostConn,
-		Root:     root,
 		clients:  make(map[uuid.UUID]*roomClient),
 	}
+}
+
+func NewPredefinedRoom(predef predefined.Room, slug string) *Room {
+	r := &Room{
+		ID:      slug,
+		predef:  predef,
+		clients: make(map[uuid.UUID]*roomClient),
+		frozen:  true,
+	}
+	predef.SetUpdater(r)
+	return r
 }
 
 func (r *Room) Frozen() bool { return r.frozen }
@@ -57,6 +68,9 @@ func (r *Room) Add(conn *websocket.Conn, userid uuid.UUID) (uuid.UUID, error) {
 			return uuid.Nil, err
 		}
 	}
+	if r.predef != nil {
+		r.predef.Hello(id, userid)
+	}
 
 	return id, nil
 }
@@ -71,6 +85,9 @@ func (r *Room) Remove(id uuid.UUID) {
 			slog.Error("failed to send leave message to host", "err", err)
 		}
 	}
+	if r.predef != nil {
+		r.predef.Leave(id)
+	}
 }
 
 func (r *Room) HandleEvent(id uuid.UUID, ev webmsg.Event) {
@@ -80,6 +97,9 @@ func (r *Room) HandleEvent(id uuid.UUID, ev webmsg.Event) {
 		}); err != nil {
 			slog.Error("failed to send event message to host", "err", err)
 		}
+	}
+	if r.predef != nil {
+		r.predef.Event(id, ev.ID, ev.Event)
 	}
 }
 
@@ -98,12 +118,41 @@ func (r *Room) UserURL() string {
 	return fmt.Sprintf("/r/%s", url.PathEscape(r.ID))
 }
 
-func (r *Room) sendUpdate(conn *websocket.Conn) error {
-	root, err := r.Root.ToWire()
+var waitingForHost, _ = components.MkAlignCenter(
+	components.MkTexture("tooltip",
+		components.MkPadding(8, 8, 8, 8,
+			components.MkLiteral("Waiting for Host"),
+		),
+	),
+).ToWire()
+
+func (r *Room) Update(client uuid.UUID, root components.Native) {
+	wire, err := root.ToWire()
 	if err != nil {
-		return err
+		slog.Error("failed to serialize root", "err", err)
+		return
 	}
 
+	r.clientsMu.Lock()
+	defer r.clientsMu.Unlock()
+	if c, ok := r.clients[client]; ok {
+		if err := c.Update(wire); err != nil {
+			slog.Error("failed to send update message to client", "err", err)
+		}
+	}
+}
+
+func (r *Room) Redirect(client uuid.UUID, url string) {
+	r.clientsMu.Lock()
+	defer r.clientsMu.Unlock()
+	if c, ok := r.clients[client]; ok {
+		if err := webmsg.SendMsg(c.conn, webmsg.TypeRedirect, webmsg.Redirect{URL: url}); err != nil {
+			slog.Error("failed to send redirect message to client", "err", err)
+		}
+	}
+}
+
+func (r *Room) sendUpdate(conn *websocket.Conn) error {
 	// TODO: host-submitted textures should be sent here
 	if err := webmsg.SendMsg(conn, webmsg.TypeTexture, webmsg.Texture{
 		ID:   "externallyloaded",
@@ -112,7 +161,7 @@ func (r *Room) sendUpdate(conn *websocket.Conn) error {
 		return err
 	}
 
-	return webmsg.SendMsg(conn, webmsg.TypeUpdate, webmsg.Update{Root: root})
+	return webmsg.SendMsg(conn, webmsg.TypeUpdate, webmsg.Update{Root: waitingForHost})
 }
 
 type roomClient struct {

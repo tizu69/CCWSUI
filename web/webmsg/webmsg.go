@@ -15,6 +15,7 @@ const (
 	TypeTexture
 	TypeEvent
 	TypeMetadata
+	TypeRedirect
 )
 
 type Envelope struct {
@@ -38,6 +39,10 @@ type Event struct {
 
 type Metadata struct {
 	Title *string `json:"title"`
+}
+
+type Redirect struct {
+	URL string `json:"url"`
 }
 
 func SendMsg(conn *websocket.Conn, typ Type, payload any) error {

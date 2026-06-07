@@ -24,6 +24,9 @@ window.ccwsui = {
 	openDevtools() {
 		throw new Error("Go wasm not initialized!");
 	},
+	redirect(url) {
+		window.location.href = url;
+	},
 
 	_rerenderReason: "Initial render",
 	queueRerender(reason) {
@@ -248,12 +251,39 @@ window.ccwsui = {
 
 				if (path.startsWith("#")) {
 					const canvas = document.createElement("canvas");
-					canvas.width = 1;
-					canvas.height = 1;
+
+					let size = 1;
+					if (flags["rounded"]) size = 1 + flags["rounded"] * 2;
+					canvas.width = size;
+					canvas.height = size;
+
 					const ctx = canvas.getContext("2d");
 					ctx.fillStyle = path;
-					ctx.fillRect(0, 0, 1, 1);
+					ctx.fillRect(0, 0, size, size);
 					this.textures[p] = canvas;
+
+					if (size > 1) {
+						const r = +flags["rounded"];
+						for (let x = 0; x < r; x++)
+							for (let y = 0; y < r; y++)
+								if (
+									(x - r) * (x - r) + (y - r) * (y - r) >
+									r * r
+								) {
+									ctx.clearRect(x, y, 1, 1);
+									ctx.clearRect(size - x - 1, y, 1, 1);
+									ctx.clearRect(x, size - y - 1, 1, 1);
+									ctx.clearRect(
+										size - x - 1,
+										size - y - 1,
+										1,
+										1,
+									);
+								}
+
+						this.textureBorders[p] = { t: r, l: r, b: r, r: r };
+					}
+
 					return Promise.resolve();
 				}
 
