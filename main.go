@@ -5,6 +5,7 @@ import (
 	"os"
 	"sync"
 
+	"g.tizu.dev/CCWSUI/predefined"
 	"github.com/Marlliton/slogpretty"
 	"github.com/joho/godotenv"
 )
@@ -42,6 +43,10 @@ func main() {
 		addr:  addr,
 		rooms: make(map[string]*Room),
 	}
+
+	app.rooms["home"] = NewPredefinedRoom(predefined.NewHome(), "home")
+	app.rooms["docs"] = NewPredefinedRoom(predefined.NewDocs(), "docs")
+
 	app.Run()
 }
 
