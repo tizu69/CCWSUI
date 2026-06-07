@@ -72,7 +72,7 @@ func (h *Docs) buildUI(page string) components.Native {
 			doc = doc.WithChildren(
 				components.MkStackH(
 					components.MkTexture("#aaa", components.MkFiller(2, 0)),
-					components.MkPadding(4, 8, 4, 8, components.MkLiteral(txt).WithWrap()),
+					components.MkPadding(2, 6, 2, 6, components.MkLiteral(txt).WithHexColor("#aaa").WithWrap()),
 				),
 			)
 		default:
