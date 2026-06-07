@@ -40,46 +40,110 @@ func (c Stack) Measure(ctx MeasureContext, constraint Size) Size {
 	}
 	totalPadding := (len(c.Children) - 1) * c.Padding
 	if c.Direction == StackDirectionH {
-		totalIdeal := 0
+		ideals := make([]int, 0, len(c.Children))
 		maxH := 0
+		nRest := 0
 
 		for _, child := range c.Children {
 			if isStackRest(child) {
+				nRest++
 				cs := child.Measure(ctx, Size{W: 0, H: constraint.H})
 				maxH = max(maxH, cs.H)
 				continue
 			}
 			cs := child.Measure(ctx, constraint)
-			totalIdeal += cs.W
 			maxH = max(maxH, cs.H)
+			ideals = append(ideals, cs.W)
 		}
 
 		availW := max(0, constraint.W-totalPadding)
-		totalW := totalIdeal
-		if totalIdeal > availW {
-			totalW = availW
+		totalW := 0
+		for _, w := range ideals {
+			totalW += w
+		}
+
+		if totalW > availW {
+			rigidW := 0
+			shrinkN := 0
+			for _, child := range c.Children {
+				if isStackRest(child) {
+					continue
+				}
+				if isShrinkable(child) {
+					shrinkN++
+				} else {
+					rigidW += child.Measure(ctx, constraint).W
+				}
+			}
+
+			remaining := availW - rigidW
+			if remaining > 0 && shrinkN > 0 {
+				each := remaining / shrinkN
+				totalW = rigidW
+				for _, child := range c.Children {
+					if isStackRest(child) || !isShrinkable(child) {
+						continue
+					}
+					sz := child.Measure(ctx, Size{W: each, H: constraint.H}).W
+					totalW += min(sz, each)
+				}
+			} else {
+				totalW = rigidW
+			}
 		}
 
 		return Size{W: totalW + totalPadding, H: maxH}
 	} else {
-		totalIdeal := 0
+		ideals := make([]int, 0, len(c.Children))
 		maxW := 0
+		nRest := 0
 
 		for _, child := range c.Children {
 			if isStackRest(child) {
+				nRest++
 				cs := child.Measure(ctx, Size{W: constraint.W, H: 0})
 				maxW = max(maxW, cs.W)
 				continue
 			}
 			cs := child.Measure(ctx, constraint)
-			totalIdeal += cs.H
 			maxW = max(maxW, cs.W)
+			ideals = append(ideals, cs.H)
 		}
 
 		availH := max(0, constraint.H-totalPadding)
-		totalH := totalIdeal
-		if totalIdeal > availH {
-			totalH = availH
+		totalH := 0
+		for _, h := range ideals {
+			totalH += h
+		}
+
+		if totalH > availH {
+			rigidH := 0
+			shrinkN := 0
+			for _, child := range c.Children {
+				if isStackRest(child) {
+					continue
+				}
+				if isShrinkable(child) {
+					shrinkN++
+				} else {
+					rigidH += child.Measure(ctx, constraint).H
+				}
+			}
+
+			remaining := availH - rigidH
+			if remaining > 0 && shrinkN > 0 {
+				each := remaining / shrinkN
+				totalH = rigidH
+				for _, child := range c.Children {
+					if isStackRest(child) || !isShrinkable(child) {
+						continue
+					}
+					sz := child.Measure(ctx, Size{W: constraint.W, H: each}).H
+					totalH += min(sz, each)
+				}
+			} else {
+				totalH = rigidH
+			}
 		}
 
 		return Size{W: maxW, H: totalH + totalPadding}
@@ -91,6 +155,7 @@ func (c Stack) Layout(ctx LayoutContext, rect Rect) LayoutNode {
 	if c.Direction == StackDirectionH {
 		return c.layoutAlong(ctx, rect, constraint,
 			func(s Size) int { return s.W },
+			func(s *Size, v int) { s.W = v },
 			func(r Rect) int { return r.X },
 			func(r *Rect, v int) { r.X = v },
 			func(r *Rect, v int) { r.W = v },
@@ -98,6 +163,7 @@ func (c Stack) Layout(ctx LayoutContext, rect Rect) LayoutNode {
 	}
 	return c.layoutAlong(ctx, rect, constraint,
 		func(s Size) int { return s.H },
+		func(s *Size, v int) { s.H = v },
 		func(r Rect) int { return r.Y },
 		func(r *Rect, v int) { r.Y = v },
 		func(r *Rect, v int) { r.H = v },
@@ -106,6 +172,7 @@ func (c Stack) Layout(ctx LayoutContext, rect Rect) LayoutNode {
 
 func (c Stack) layoutAlong(ctx LayoutContext, rect Rect, constraint Size,
 	mainDim func(Size) int,
+	setMainDim func(*Size, int),
 	getPos func(Rect) int,
 	setPos func(*Rect, int),
 	setDim func(*Rect, int),
@@ -128,11 +195,39 @@ func (c Stack) layoutAlong(ctx LayoutContext, rect Rect, constraint Size,
 	pos := getPos(rect)
 
 	if fixedMain > availMain {
+		sizes := make([]int, len(c.Children))
+		rigidMain := 0
+		shrinkN := 0
+		for i, child := range c.Children {
+			if isStackRest(child) {
+				continue
+			}
+			sz := mainDim(child.Measure(ctx, constraint))
+			sizes[i] = sz
+			if isShrinkable(child) {
+				shrinkN++
+			} else {
+				rigidMain += sz
+			}
+		}
+
+		remaining := availMain - rigidMain
+		if remaining > 0 && shrinkN > 0 {
+			each := remaining / shrinkN
+			for i, child := range c.Children {
+				if isStackRest(child) || !isShrinkable(child) {
+					continue
+				}
+				shrunkConstraint := constraint
+				setMainDim(&shrunkConstraint, each)
+				sizes[i] = min(mainDim(child.Measure(ctx, shrunkConstraint)), each)
+			}
+		}
+
 		for i, child := range c.Children {
 			m := 0
 			if !isStackRest(child) {
-				ideal := mainDim(child.Measure(ctx, constraint))
-				m = ideal * availMain / fixedMain
+				m = sizes[i]
 			}
 			childRect := rect
 			setPos(&childRect, pos)
@@ -226,4 +321,12 @@ func StackFromWire(n WireNode) (Native, error) {
 func isStackRest(child Native) bool {
 	_, ok := child.(Expanded)
 	return ok
+}
+
+func isShrinkable(child Native) bool {
+	switch child.(type) {
+	case Shrinkable, Expanded:
+		return true
+	}
+	return false
 }
