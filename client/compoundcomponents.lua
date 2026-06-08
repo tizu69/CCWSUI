@@ -12,7 +12,7 @@ function components.Tooltip(text, child)
 		:add(
 			c.FollowMouse(0, 1,
 				text
-				:wrapPadding(4, 4)
+				:wrapPadding(5, 3)
 				:wrapTexture("tooltip")
 				:wrapPadding(4, 0)
 			):flipIfOverflow()
@@ -29,7 +29,7 @@ function components.CreateWindow(title, color, child, ...)
 		:add(
 			c.Literal(title)
 			:wrapAlignCenter()
-			:wrapPadding(10, 3)
+			:wrapPadding(10, 2)
 			:wrapTexture("title"):tintedHex(color)
 		)
 		:add(

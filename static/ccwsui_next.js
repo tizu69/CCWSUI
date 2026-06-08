@@ -5,8 +5,8 @@ const isDevtoolsShortcut = (e) =>
 
 window.ccwsui = {
 	scale: 3,
-	baseline: 8,
-	lineheight: 9,
+	baseline: 9,
+	lineheight: 11,
 	fontsize: 12,
 
 	socketURL:
