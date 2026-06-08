@@ -65,16 +65,33 @@ func (h *Docs) buildUI(page string) components.Native {
 	}
 
 	doc := components.MkStackV().WithGap(8)
-	for _, compound := range strings.Split(string(contents[:len(contents)-1]), "\n\n") {
+	for compound := range strings.SplitSeq(strings.TrimSpace(string(contents)), "\n\n") {
 		switch {
 		case strings.HasPrefix(compound, "> "):
+			l := components.MkLiteral("").WithWrap()
+			color := "#AAAAAA"
+			switch alert := strings.SplitN(compound, "\n> ", 2); alert[0] {
+			case "> [!NOTE]":
+				color = "#99B2F2"
+				compound = "> " + alert[1]
+				l = l.WithText("Note! ").WithHexColor(color)
+			case "> [!CAUTION]":
+				color = "#CC4C4C"
+				compound = "> " + alert[1]
+				l = l.WithText("Caution! ").WithHexColor(color)
+			}
 			txt := strings.ReplaceAll(compound[2:], "\n> ", " ")
-			doc = doc.WithChildren(
-				components.MkStackH(
-					components.MkTexture("#aaa", components.MkFiller(2, 0)),
-					components.MkPadding(2, 6, 2, 6, components.MkLiteral(txt).WithHexColor("#aaa").WithWrap()),
+			doc = doc.WithChildren(components.MkStackH(
+				components.MkTexture(color, components.MkFiller(2, 0)),
+				components.MkOverlay(
+					components.MkTexture(color+"20", components.MkBlank()),
+					components.MkPadding(4, 6, 4, 6, l.WithText(txt).WithHexColor("#aaa")),
 				),
-			)
+			))
+		case compound == "---":
+			doc = doc.WithChildren(components.MkPadding(4, 16, 4, 16,
+				components.MkTexture("#444", components.MkFiller(0, 1)),
+			))
 		default:
 			txt := strings.ReplaceAll(compound, "\n", " ")
 			doc = doc.WithChildren(components.MkLiteral(txt).WithWrap())
@@ -83,7 +100,7 @@ func (h *Docs) buildUI(page string) components.Native {
 
 	return components.MkStackH(
 		components.MkTexture("#202020",
-			components.MkPadding(12, 8, 12, 8,
+			components.MkPadding(12, 8, 12, 16,
 				components.MkStackV(
 					append([]components.Native{
 						components.MkLiteral("CCWSUI").
@@ -96,9 +113,11 @@ func (h *Docs) buildUI(page string) components.Native {
 
 		components.MkExpandH(
 			components.MkAlignX(components.AlignmentCenter,
-				components.MkPadding(24, 8, 24, 8,
-					components.MkConstrain(300, 0, doc),
-				),
+				components.MkScroll("page:"+page, components.DirectionV,
+					components.MkPadding(24, 8, 24, 8,
+						components.MkConstrain(300, 0, doc),
+					),
+				).WithStep(32),
 			),
 		),
 	)
