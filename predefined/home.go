@@ -49,7 +49,7 @@ func (h *Home) buildUI() components.Native {
 								components.MkLiteral("UIs that feel like home."),
 							),
 
-							components.MkLiteral("CCWSUI offers a simple, declarative way to build pixel-perfect web UIs, controlled entirely from within your ComputerCraft* code.").
+							components.MkLiteral("CCWSUI offers a simple, declarative way to build pixel-perfect web UIs from within ComputerCraft.").
 								WithHexColor("#aaa").WithWrap().WithAlignment(components.AlignmentCenter),
 
 							components.MkAlignX(components.AlignmentCenter,
@@ -72,20 +72,13 @@ func (h *Home) buildUI() components.Native {
 				),
 			),
 		),
-
-		components.MkAlignX(components.AlignmentCenter,
-			components.MkPadding(4, 4, 4, 4,
-				components.MkLiteral("* or anything, really. If it can connect to a WebSocket, it can serve a CCWSUI!").
-					WithHexColor("#555").WithWrap().WithAlignment(components.AlignmentCenter),
-			),
-		),
 	)
 }
 
 func (Home) buildExample() components.Native {
 	return components.MkStackV(
 		components.MkTexture("title",
-			components.MkPadding(3, 10, 3, 10,
+			components.MkPadding(2, 10, 2, 10,
 				components.MkAlignCenter(
 					components.MkLiteral("Thermostat"),
 				),

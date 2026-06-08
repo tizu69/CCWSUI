@@ -143,12 +143,13 @@ window.ccwsui = {
 		const clone = template.content.cloneNode(true);
 		const el = clone.firstElementChild;
 		el.id = "ccwsui-connection-status-element";
-		el.textContent =
-			status === "notfound"
-				? "There does not appear to be a CCWSUI here. Did you typo the URL, and are you sure the server is running?"
-				: status === "connecting"
-					? "Attempting to connect..."
-					: "Attempting to reconnect...";
+		el.textContent = {
+			notfound:
+				"There does not appear to be a CCWSUI here. Did you typo the URL, and are you sure the server is running?",
+			connecting: "Attempting to connect...",
+			reconnecting: "Attempting to reconnect...",
+			preparing: "Getting ready...",
+		}[status];
 		document.body.appendChild(clone);
 		this.queueRerender("Connection status changed");
 	},
@@ -686,7 +687,7 @@ window.ccwsui = {
 	},
 };
 
-window.ccwsui.setConnectionStatus("connecting");
+window.ccwsui.setConnectionStatus("preparing");
 
 const go = new Go();
 WebAssembly.instantiateStreaming(

@@ -11,7 +11,7 @@ your ComputerCraft code.
 > [!NOTE]
 > In theory, anything that can communicate as a client with a WebSocket can
 > serve a CCWSUI, however, at the moment, only ComputerCraft has an official
-> client implementation.
+> host implementation.
 
 ---
 
