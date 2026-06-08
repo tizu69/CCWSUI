@@ -23,9 +23,13 @@ function CCWSUI:render(ctx)
 	}
 
 	return c.StackV()
-		:add(line(ctx)
+		:add(
+			line(ctx)
 			:wrapAlignCenter()
-			:wrapExpand())
+			:wrapMediaQuery()
+			:minWidth(200)
+			:wrapExpand()
+		)
 		:add(
 			cc.CreateWindow("Hello!", "#888b79",
 				c.StackV()

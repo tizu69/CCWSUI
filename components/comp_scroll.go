@@ -30,14 +30,10 @@ func (c Scroll) WithStep(step int) Scroll {
 }
 
 func (c Scroll) Measure(ctx MeasureContext, constraint Size) Size {
-	unconstrained := Size{W: constraint.W, H: constraint.H}
-	if c.scrollsH() {
-		unconstrained.W = 1<<31 - 1
-	}
-	if c.scrollsV() {
-		unconstrained.H = 1<<31 - 1
-	}
-	child := c.Child.Measure(ctx, unconstrained)
+	child := c.Child.Measure(ctx, Size{
+		W: ifelse(c.scrollsH(), 1<<31-1, constraint.W),
+		H: ifelse(c.scrollsV(), 1<<31-1, constraint.H),
+	})
 	return Size{
 		W: min(child.W, constraint.W),
 		H: min(child.H, constraint.H),
@@ -45,7 +41,10 @@ func (c Scroll) Measure(ctx MeasureContext, constraint Size) Size {
 }
 
 func (c Scroll) Layout(ctx LayoutContext, rect Rect) LayoutNode {
-	childSize := c.Child.Measure(ctx, Size{W: rect.W, H: rect.H})
+	childSize := c.Child.Measure(ctx, Size{
+		W: ifelse(c.scrollsH(), 1<<31-1, rect.W),
+		H: ifelse(c.scrollsV(), 1<<31-1, rect.H),
+	})
 
 	cctx := &scrollCtx{}
 	ctx.UseContext(c.ID, &cctx)

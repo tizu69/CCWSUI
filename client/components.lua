@@ -382,6 +382,45 @@ function Literal:align(alignment)
 	return self
 end
 
+---@class MediaQuery : CCWSUI.Component
+local MediaQuery = makecomp()
+
+---@param child CCWSUI.Component
+---@return MediaQuery
+function components.MediaQuery(child)
+	return setmetatable({
+		kind = "mediaquery",
+		props = {},
+		children = { child },
+	}, { __index = MediaQuery })
+end
+
+function component:wrapMediaQuery() return components.MediaQuery(self) end
+
+---@param minWidth number
+function MediaQuery:minWidth(minWidth)
+	self.props.MinWidth = minWidth
+	return self
+end
+
+---@param maxWidth number
+function MediaQuery:maxWidth(maxWidth)
+	self.props.MaxWidth = maxWidth
+	return self
+end
+
+---@param minHeight number
+function MediaQuery:minHeight(minHeight)
+	self.props.MinHeight = minHeight
+	return self
+end
+
+---@param maxHeight number
+function MediaQuery:maxHeight(maxHeight)
+	self.props.MaxHeight = maxHeight
+	return self
+end
+
 ---@class Overlay : CCWSUI.Component
 local Overlay = makecomp()
 
@@ -480,6 +519,21 @@ function Scroll:step(step)
 	self.props.Step = step
 	return self
 end
+
+---@class Shrinkable : CCWSUI.Component
+local Shrinkable = makecomp()
+
+---@param child CCWSUI.Component
+---@return Shrinkable
+function components.Shrinkable(child)
+	return setmetatable({
+		kind = "shrinkable",
+		props = {},
+		children = { child },
+	}, { __index = Shrinkable })
+end
+
+function component:wrapShrinkable() return components.Shrinkable(self) end
 
 ---@class Stack : CCWSUI.Component
 local Stack = makecomp()

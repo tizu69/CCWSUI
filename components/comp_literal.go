@@ -104,11 +104,11 @@ func (c Literal) WithAlignment(alignment Alignment) Literal {
 }
 
 func (c Literal) String() string {
-	var s string
+	var s strings.Builder
 	for _, piece := range c.Pieces {
-		s += piece.Text
+		s.WriteString(piece.Text)
 	}
-	return s
+	return s.String()
 }
 
 func (c Literal) Measure(ctx MeasureContext, constraint Size) Size {
