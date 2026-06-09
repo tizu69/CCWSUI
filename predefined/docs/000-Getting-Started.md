@@ -15,6 +15,9 @@ your ComputerCraft code.
 
 ---
 
+To get started with building a CCWSUI for your ComputerCraft scripts, first
+generate a CCWSUI bundle from the [Downloads](page:010-Download) page.
+
 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor
 incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis
 nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.

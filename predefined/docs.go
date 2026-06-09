@@ -4,6 +4,7 @@ import (
 	"embed"
 	"encoding/json"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"g.tizu.dev/CCWSUI/components"
@@ -52,7 +53,7 @@ func (h *Docs) Hello(client uuid.UUID, user uuid.UUID) {
 func (h *Docs) buildUI(page string) components.Native {
 	contents, _ := docsFS.ReadFile("docs/" + page + ".md")
 	if contents == nil {
-		contents = []byte("Page not found")
+		contents = []byte("Page not found: " + page)
 	}
 
 	pages := make([]components.Native, 0)
@@ -83,18 +84,21 @@ func (h *Docs) buildUI(page string) components.Native {
 			txt := strings.ReplaceAll(compound[2:], "\n> ", " ")
 			doc = doc.WithChildren(components.MkStackH(
 				components.MkTexture(color, components.MkFiller(2, 0)),
-				components.MkOverlay(
-					components.MkTexture(color+"20", components.MkBlank()),
-					components.MkPadding(4, 6, 4, 6, l.WithText(txt).WithHexColor("#aaa")),
+				components.MkTexture(color+"20",
+					components.MkPadding(4, 6, 4, 6,
+						h.linkify(l, txt, "#aaa"),
+					),
 				),
 			))
 		case compound == "---":
 			doc = doc.WithChildren(components.MkPadding(4, 16, 4, 16,
 				components.MkTexture("#444", components.MkFiller(0, 1)),
 			))
+		case compound == "<ccwsui-download />":
+			doc = doc.WithChildren(components.MkLiteral("TODO").WithHexColor("#ff0000"))
 		default:
 			txt := strings.ReplaceAll(compound, "\n", " ")
-			doc = doc.WithChildren(components.MkLiteral(txt).WithWrap())
+			doc = doc.WithChildren(h.linkify(components.MkLiteral(""), txt, "#f0f0f0").WithWrap())
 		}
 	}
 
@@ -115,12 +119,32 @@ func (h *Docs) buildUI(page string) components.Native {
 			components.MkAlignX(components.AlignmentCenter,
 				components.MkScroll("page:"+page, components.DirectionV,
 					components.MkPadding(24, 8, 24, 8,
-						components.MkConstrain(300, 0, doc),
+						components.MkConstrain(300, 0,
+							components.MkOverlay(components.MkFiller(300, 0), doc),
+						),
 					),
 				).WithStep(32),
 			),
 		),
 	)
+}
+
+var linkRe = regexp.MustCompile(`\[([^\]]*)\]\(([^)]+)\)`)
+
+func (h *Docs) linkify(l components.Literal, text, color string) components.Literal {
+	const linkcolor = "#36c"
+	lastEnd := 0
+	for _, m := range linkRe.FindAllStringSubmatchIndex(text, -1) {
+		if m[0] > lastEnd {
+			l = l.WithText(text[lastEnd:m[0]]).WithHexColor(color)
+		}
+		l = l.WithText(text[m[2]:m[3]]).WithHexColor(linkcolor).WithClickEvent(text[m[4]:m[5]])
+		lastEnd = m[1]
+	}
+	if lastEnd < len(text) {
+		l = l.WithText(text[lastEnd:]).WithHexColor(color)
+	}
+	return l
 }
 
 func (h *Docs) Leave(client uuid.UUID) {

@@ -50,6 +50,7 @@ func (h *Home) buildUI() components.Native {
 							),
 
 							components.MkLiteral("CCWSUI offers a simple, declarative way to build pixel-perfect web UIs from within ComputerCraft.").
+								WithText("foo").WithClickEvent("docs").WithText("bar").
 								WithHexColor("#aaa").WithWrap().WithAlignment(components.AlignmentCenter),
 
 							components.MkAlignX(components.AlignmentCenter,
@@ -99,7 +100,7 @@ func (Home) buildExample() components.Native {
 											),
 											components.MkExpandH(components.MkBlank()),
 											components.MkTexture("lineguide-inset",
-												components.MkPadding(0, 5, 0, 2,
+												components.MkPadding(-1, 5, -1, 2,
 													components.MkLiteral("22°C").
 														WithShadow(),
 												),

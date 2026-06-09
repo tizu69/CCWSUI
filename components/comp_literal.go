@@ -33,13 +33,13 @@ func init() {
 
 func MkLiteral(text string) Literal {
 	return Literal{Pieces: []literalPiece{{
-		Text: text, Color: color.RGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff},
+		Text: text, Color: color.RGBA{R: 0xf0, G: 0xf0, B: 0xf0, A: 0xff},
 	}}}
 }
 
 func (c Literal) WithText(text string) Literal {
 	c.Pieces = append(c.Pieces, literalPiece{
-		Text: text, Color: color.RGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff},
+		Text: text, Color: color.RGBA{R: 0xf0, G: 0xf0, B: 0xf0, A: 0xff},
 	})
 	return c
 }
