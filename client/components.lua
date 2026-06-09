@@ -371,6 +371,15 @@ function Literal:shadow()
 	return self
 end
 
+---@param ctx CCWSUI.Context
+---@param event CCWSUI.Handler<CCWSUI.ClickRegionEvent>|string
+function Literal:clickEvent(ctx, event)
+	local eventid = type(event) == "string" and event or nanoid()
+	if type(event) == "function" then ctx:addHandler(eventid, event) end
+	self.props.Pieces[#self.props.Pieces].ClickEvent = eventid
+	return self
+end
+
 function Literal:wrap()
 	self.props.Wrap = true
 	return self

@@ -6,12 +6,14 @@ import (
 	"image/color"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 type literalPiece struct {
-	Text   string
-	Color  color.RGBA
-	Shadow bool
+	Text       string
+	Color      color.RGBA
+	Shadow     bool
+	ClickEvent string
 }
 
 type Literal struct {
@@ -98,6 +100,11 @@ func (c Literal) WithShadow() Literal {
 	return c
 }
 
+func (c Literal) WithClickEvent(event string) Literal {
+	c.Pieces[len(c.Pieces)-1].ClickEvent = event
+	return c
+}
+
 func (c Literal) WithAlignment(alignment Alignment) Literal {
 	c.Alignment = alignment
 	return c
@@ -118,6 +125,35 @@ func (c Literal) Measure(ctx MeasureContext, constraint Size) Size {
 
 func (c Literal) Layout(ctx LayoutContext, rect Rect) LayoutNode {
 	lines, longest := c.maybeWrap(ctx, rect.W)
+
+	for y, l := range lines {
+		offsetX := rect.X
+		switch c.Alignment {
+		case AlignmentCenter:
+			offsetX += (rect.W - l.Width) / 2
+		case AlignmentEnd:
+			offsetX += rect.W - l.Width
+		}
+		for _, p := range l.Pieces {
+			ox, w := offsetX, ctx.GuessTextWidth(p.Text)
+			offsetX += w
+			if p.ClickEvent == "" {
+				continue
+			}
+			rect := Rect{
+				X: ox, Y: rect.Y + y*ctx.GetLineHeight(),
+				W: w, H: ctx.GetLineHeight(),
+			}
+			if ctx.GetMouseDown() && rect.Contains(ctx.GetMousePos()) {
+				ctx.SendEvent(p.ClickEvent, clickRegionEvent{
+					Shift: ctx.GetShiftDown(),
+					Ctrl:  ctx.GetCtrlDown(),
+					Alt:   ctx.GetAltDown(),
+				})
+			}
+		}
+	}
+
 	return LayoutNode{Rect: Rect{
 		X: rect.X, Y: rect.Y, W: longest, H: len(lines) * ctx.GetLineHeight(),
 	}, Title: fmt.Sprintf("Literal (%q)", c.String())}
@@ -165,115 +201,108 @@ func LiteralFromWire(n WireNode) (Native, error) {
 	return p, err
 }
 
-// maybeWrap returns the wrapped lines of text and the longest line's width.
-func (c Literal) maybeWrap(ctx MeasureContext, width int) (lines []literalLine, longest int) {
-	for _, paragraph := range c.paragraphs() {
-		l, w := c.maybeWrapParagraph(paragraph, ctx, width)
-		lines = append(lines, l...)
-		if w > longest {
-			longest = w
+func (c Literal) maybeWrap(ctx MeasureContext, maxWidth int) ([]literalLine, int) {
+	if !c.Wrap || maxWidth <= 0 {
+		total := 0
+		for _, p := range c.Pieces {
+			total += ctx.GuessTextWidth(p.Text)
+		}
+		return []literalLine{{Pieces: c.Pieces, Width: total}}, total
+	}
+
+	var lines []literalLine
+	var cur literalLine
+	curW := 0
+
+	emit := func() {
+		if len(cur.Pieces) > 0 {
+			cur.Width = curW
+			lines = append(lines, cur)
+			cur = literalLine{}
+			curW = 0
 		}
 	}
-	return lines, longest
-}
 
-func (c Literal) paragraphs() [][]literalPiece {
-	paragraphs := [][]literalPiece{{}}
-	for _, piece := range c.Pieces {
-		parts := strings.Split(piece.Text, "\n")
-		for i, part := range parts {
-			if i > 0 {
-				paragraphs = append(paragraphs, []literalPiece{})
-			}
-			if part == "" {
+	for _, p := range c.Pieces {
+		text := p.Text
+		segStart := 0
+		segW := 0
+		lastSpace := -1
+		lastSpaceSegW := 0
+		lastSpaceEnd := 0
+
+		for i := 0; i < len(text); {
+			r, size := utf8.DecodeRuneInString(text[i:])
+			if r == '\n' {
+				if i > segStart {
+					cur.Pieces = append(cur.Pieces, literalPiece{
+						Text: text[segStart:i], Color: p.Color,
+						Shadow: p.Shadow, ClickEvent: p.ClickEvent,
+					})
+					curW += segW
+				}
+				emit()
+				i += size
+				segStart = i
+				segW = 0
+				lastSpace = -1
 				continue
 			}
-			piece.Text = part
-			last := len(paragraphs) - 1
-			paragraphs[last] = appendLiteralPiece(paragraphs[last], piece)
+
+			if r == ' ' {
+				lastSpace = i
+				lastSpaceSegW = segW
+				lastSpaceEnd = i + size
+			}
+
+			rw := ctx.GuessTextWidth(string(r))
+			if curW+segW+rw > maxWidth && segStart < i {
+				if lastSpace != -1 {
+					// word break
+					cur.Pieces = append(cur.Pieces, literalPiece{
+						Text: text[segStart:lastSpace], Color: p.Color,
+						Shadow: p.Shadow, ClickEvent: p.ClickEvent,
+					})
+					curW += lastSpaceSegW
+					emit()
+					i = lastSpaceEnd
+					segStart = i
+					segW = 0
+					lastSpace = -1
+				} else {
+					// hard break
+					cur.Pieces = append(cur.Pieces, literalPiece{
+						Text: text[segStart:i], Color: p.Color,
+						Shadow: p.Shadow, ClickEvent: p.ClickEvent,
+					})
+					curW += segW
+					emit()
+					segStart = i
+					segW = 0
+					lastSpace = -1
+				}
+				continue
+			}
+
+			segW += rw
+			i += size
+		}
+
+		if segStart < len(text) {
+			cur.Pieces = append(cur.Pieces, literalPiece{
+				Text: text[segStart:], Color: p.Color,
+				Shadow: p.Shadow, ClickEvent: p.ClickEvent,
+			})
+			curW += segW
 		}
 	}
-	return paragraphs
-}
+	emit()
 
-func (c Literal) maybeWrapParagraph(pieces []literalPiece, ctx MeasureContext, width int) (lines []literalLine, longest int) {
-	if !c.Wrap || width <= 0 {
-		line := literalLine{Pieces: pieces, Width: piecesWidth(ctx, pieces)}
-		return []literalLine{line}, line.Width
-	}
-
-	words := literalWords(pieces)
-	if len(words) == 0 {
-		return []literalLine{{}}, 0
-	}
-
-	var current literalLine
-	flush := func() {
-		if len(current.Pieces) == 0 {
-			return
-		}
-		if current.Width > longest {
-			longest = current.Width
-		}
-		lines = append(lines, current)
-		current = literalLine{}
-	}
-
-	spaceWidth := ctx.GuessTextWidth(" ")
-	for _, word := range words {
-		wordWidth := ctx.GuessTextWidth(word.Text)
-		if len(current.Pieces) == 0 {
-			current.Pieces = appendLiteralPiece(current.Pieces, word)
-			current.Width = wordWidth
-			continue
-		}
-
-		space := word
-		space.Text = " "
-		candidateWidth := current.Width + spaceWidth + wordWidth
-		if candidateWidth <= width {
-			current.Pieces = appendLiteralPiece(current.Pieces, space)
-			current.Pieces = appendLiteralPiece(current.Pieces, word)
-			current.Width = candidateWidth
-		} else {
-			flush()
-			current.Pieces = appendLiteralPiece(current.Pieces, word)
-			current.Width = wordWidth
+	longest := 0
+	for _, l := range lines {
+		if l.Width > longest {
+			longest = l.Width
 		}
 	}
-
-	flush()
-
 	return lines, longest
-}
-
-func literalWords(pieces []literalPiece) []literalPiece {
-	var words []literalPiece
-	for _, piece := range pieces {
-		for word := range strings.FieldsSeq(piece.Text) {
-			piece.Text = word
-			words = append(words, piece)
-		}
-	}
-	return words
-}
-
-func piecesWidth(ctx MeasureContext, pieces []literalPiece) int {
-	var width int
-	for _, piece := range pieces {
-		width += ctx.GuessTextWidth(piece.Text)
-	}
-	return width
-}
-
-func appendLiteralPiece(pieces []literalPiece, piece literalPiece) []literalPiece {
-	if piece.Text == "" {
-		return pieces
-	}
-	last := len(pieces) - 1
-	if last >= 0 && pieces[last].Color == piece.Color && pieces[last].Shadow == piece.Shadow {
-		pieces[last].Text += piece.Text
-		return pieces
-	}
-	return append(pieces, piece)
 }
