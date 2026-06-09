@@ -1,6 +1,6 @@
 module g.tizu.dev/CCWSUI
 
-go 1.26.3
+go 1.26
 
 require (
 	github.com/Marlliton/slogpretty v0.1.3
