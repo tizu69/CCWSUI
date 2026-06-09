@@ -1,7 +1,7 @@
 on: [push]
 jobs:
     build:
-        runs-on: codeberg-medium
+        runs-on: codeberg-small
         steps:
             - name: Checkout code
               uses: actions/checkout@v6
