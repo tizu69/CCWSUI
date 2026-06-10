@@ -20,7 +20,7 @@ type CCWSUI struct {
 func main() {
 	slog.SetDefault(slog.New(slogpretty.New(os.Stdout, &slogpretty.Options{
 		Level: slog.LevelDebug, AddSource: true, Colorful: true,
-		Multiline: true, TimeFormat: "01.02.06 3:04PM",
+		Multiline: true, TimeFormat: "02.01.06 3:04PM",
 	})))
 
 	if files, err := staticFS.ReadDir("static/item"); err != nil || len(files) < 10 {
