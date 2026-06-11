@@ -123,6 +123,9 @@ function CCWSUI:reconnect()
 end
 
 --- Returns the user UUID for the given client UUID.
+--- Never ever expose the user ID to the client, nor allow the user ID alone to
+--- be the deciding factor for things like authorization. The user ID is not a
+--- secret, and can be easily spoofed by a malicious client.
 --- @param client string
 --- @return string|nil
 function CCWSUI:getUser(client) return self.users[client] end
@@ -188,7 +191,7 @@ end
 --- @class CCWSUI.Context
 --- @field client string The client ID.
 --- @field private inst CCWSUI
---- @field user string Unique to a user. May be shared across clients.
+--- @field user string Unique to a user. May be shared across clients. Never ever expose the user ID to the client, nor allow the user ID alone to be the deciding factor for things like authorization. The user ID is not a secret, and can be easily spoofed by a malicious client.
 local Context = {}
 
 local function contextFrom(inst, client)

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"g.tizu.dev/CCWSUI/components"
 	"github.com/google/uuid"
@@ -26,14 +27,23 @@ func init() {
 	}
 }
 
+type docsUser struct {
+	Page string
+	Time time.Time
+}
+
 type Docs struct {
 	Updater     Updater
 	clientpages map[uuid.UUID]string
+	clientuser  map[uuid.UUID]uuid.UUID
+	users       map[uuid.UUID]docsUser
 }
 
 func NewDocs() *Docs {
 	return &Docs{
 		clientpages: make(map[uuid.UUID]string),
+		clientuser:  make(map[uuid.UUID]uuid.UUID),
+		users:       make(map[uuid.UUID]docsUser),
 	}
 }
 
@@ -41,12 +51,18 @@ func (h *Docs) Event(client uuid.UUID, id string, event json.RawMessage) {
 	switch {
 	case strings.HasPrefix(id, "page:"):
 		h.clientpages[client] = id[5:]
+		h.users[h.clientuser[client]] = docsUser{Page: id[5:], Time: time.Now()}
 		h.Updater.Update(client, h.buildUI(h.clientpages[client]))
 	}
 }
 
 func (h *Docs) Hello(client uuid.UUID, user uuid.UUID) {
+	h.clientuser[client] = user
 	h.clientpages[client] = "000-Getting-Started"
+	if u, ok := h.users[user]; ok && time.Since(u.Time) < time.Hour {
+		h.clientpages[client] = u.Page
+	}
+	h.users[h.clientuser[client]] = docsUser{Page: h.clientpages[client], Time: time.Now()}
 	h.Updater.Update(client, h.buildUI(h.clientpages[client]))
 }
 
@@ -96,6 +112,15 @@ func (h *Docs) buildUI(page string) components.Native {
 			))
 		case compound == "<ccwsui-download />":
 			doc = doc.WithChildren(components.MkLiteral("TODO").WithHexColor("#ff0000"))
+		case strings.HasPrefix(compound, "```"):
+			lang, code, _ := strings.Cut(compound[3:], "\n")
+			lang, code = strings.TrimSpace(lang), strings.TrimSpace(code[:len(code)-3])
+			_ = lang // TODO: syntax highlighting for other languages? maybe?
+			doc = doc.WithChildren(components.MkTexture("#202020",
+				components.MkScroll("codeblock:"+code, components.DirectionH,
+					components.MkPadding(8, 8, 8, 8, highlightLua(code)),
+				),
+			))
 		default:
 			txt := strings.ReplaceAll(compound, "\n", " ")
 			doc = doc.WithChildren(h.linkify(components.MkLiteral(""), txt, "#f0f0f0").WithWrap())
@@ -123,7 +148,7 @@ func (h *Docs) buildUI(page string) components.Native {
 							components.MkOverlay(components.MkFiller(300, 0), doc),
 						),
 					),
-				).WithStep(32),
+				),
 			),
 		),
 	)
@@ -148,6 +173,7 @@ func (h *Docs) linkify(l components.Literal, text, color string) components.Lite
 }
 
 func (h *Docs) Leave(client uuid.UUID) {
+	delete(h.clientuser, client)
 }
 
 func (h *Docs) SetUpdater(updater Updater) { h.Updater = updater }
