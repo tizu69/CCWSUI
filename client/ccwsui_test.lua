@@ -63,10 +63,6 @@ function CCWSUI:render(ctx)
 			:wrapExpand())
 end
 
-function CCWSUI:ready(url)
-	print("Access UI: " .. url)
-end
-
 parallel.waitForAny(function() CCWSUI:run() end, function()
 	while true do
 		sleep(1)

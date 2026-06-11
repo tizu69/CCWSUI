@@ -12,6 +12,9 @@ local expect = require "cc.expect"
 --- @field package handlers table<string, table<string, CCWSUI.Handler>>
 --- @field private ws table The WebSocket connection to the backend.
 --- @field render fun(self: CCWSUI, ctx: CCWSUI.Context): CCWSUI.Component A function that renders the UI.
+--- @field hello fun(self: CCWSUI, client: string, user: string) Gets called when a new client connects.
+--- @field leave fun(self: CCWSUI, client: string) Gets called when a client disconnects.
+--- @field handle fun(self: CCWSUI, client: string, event: string, data: table) Gets called when a client sends an event.
 --- @field ready fun(self: CCWSUI, url: string) Gets called when the UI is ready to be used. May be called more than once if the connection drops.
 --- @field private rerendering boolean Whether the UI is currently being rerendered.
 --- @field private retryDelay number
@@ -51,8 +54,6 @@ end
 --- It only returns if something goes wrong. Check CCWSUI.error after the
 --- parallel call to see what went wrong, if anything.
 function CCWSUI:run()
-	if not self.render then error("CCWSUI:render is not set!", 2) end
-	if not self.ready then error("CCWSUI:ready is not set!", 2) end
 	self.retryDelay = 0
 	self.ws.send(textutils.serializeJSON({ t = 3 })) -- freeze
 	while true do
@@ -72,14 +73,19 @@ function CCWSUI:run()
 				self:ready(url)
 			elseif msg.t == 5 then -- Hello
 				self.users[msg.d.client] = msg.d.user
+				self:hello(msg.d.client, msg.d.user)
+				os.queueEvent("ccwsui:hello", msg.d.client, msg.d.user)
 				self:forceRender(msg.d.client)
 			elseif msg.t == 6 then -- Leave
+				self:leave(msg.d.client)
+				os.queueEvent("ccwsui:leave", msg.d.client)
 				for _, state in pairs(self.state) do
 					state._listeners[msg.d.client] = nil
 				end
 				self.users[msg.d.client] = nil
 				self.handlers[msg.d.client] = nil
 			elseif msg.t == 7 then -- Event
+				self:handle(msg.d.client, msg.d.event, msg.d.data)
 				os.queueEvent("ccwsui:event", msg.d.client, msg.d.event, msg.d.data)
 				if self.handlers[msg.d.client] and self.handlers[msg.d.client][msg.d.event] then
 					self.handlers[msg.d.client][msg.d.event](msg.d.data)
@@ -254,6 +260,43 @@ function CCWSUI:updateMetadata(client)
 			d = { client = client, title = d.title }
 		}))
 	end
+end
+
+-- default hook implementations
+
+function CCWSUI:render(ctx)
+	return {
+		kind = "align",
+		props = { X = 0.5, Y = 0.5 },
+		children = {
+			{
+				kind = "literal",
+				props = {
+					Wrap = true,
+					Pieces = {
+						{
+							Text = "Hello World! If you're seeing this, congratulations, CCWSUI is working!",
+							Color = { R = 255, G = 255, B = 255, A = 255 },
+						},
+					},
+				},
+				children = textutils.empty_json_array,
+			}
+		},
+	}
+end
+
+function CCWSUI:hello(client, user)
+end
+
+function CCWSUI:leave(client)
+end
+
+function CCWSUI:handle(client, event, data)
+end
+
+function CCWSUI:ready(url)
+	print("CCWSUI: " .. url)
 end
 
 return CCWSUI
