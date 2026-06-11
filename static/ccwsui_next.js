@@ -122,7 +122,9 @@ window.ccwsui = {
 					return;
 				}
 
-				this.mouseScroll = { dx: e.deltaX, dy: e.deltaY };
+				const dx = !e.shiftKey ? e.deltaX : e.deltaY;
+				const dy = !e.shiftKey ? e.deltaY : e.deltaX;
+				this.mouseScroll = { dx, dy };
 				this.queueRerender("Scrolled");
 			},
 			{ passive: false },

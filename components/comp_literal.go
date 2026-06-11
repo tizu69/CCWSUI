@@ -207,12 +207,10 @@ func (c Literal) maybeWrap(ctx MeasureContext, maxWidth int) ([]literalLine, int
 	curW := 0
 
 	emit := func() {
-		if len(cur.Pieces) > 0 {
-			cur.Width = curW
-			lines = append(lines, cur)
-			cur = literalLine{}
-			curW = 0
-		}
+		cur.Width = curW
+		lines = append(lines, cur)
+		cur = literalLine{}
+		curW = 0
 	}
 
 	for _, p := range c.Pieces {
