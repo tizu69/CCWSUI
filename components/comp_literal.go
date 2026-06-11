@@ -202,14 +202,6 @@ func LiteralFromWire(n WireNode) (Native, error) {
 }
 
 func (c Literal) maybeWrap(ctx MeasureContext, maxWidth int) ([]literalLine, int) {
-	if !c.Wrap || maxWidth <= 0 {
-		total := 0
-		for _, p := range c.Pieces {
-			total += ctx.GuessTextWidth(p.Text)
-		}
-		return []literalLine{{Pieces: c.Pieces, Width: total}}, total
-	}
-
 	var lines []literalLine
 	var cur literalLine
 	curW := 0
@@ -256,7 +248,7 @@ func (c Literal) maybeWrap(ctx MeasureContext, maxWidth int) ([]literalLine, int
 			}
 
 			rw := ctx.GuessTextWidth(string(r))
-			if curW+segW+rw > maxWidth && segStart < i {
+			if c.Wrap && maxWidth > 0 && curW+segW+rw > maxWidth && segStart < i {
 				if lastSpace != -1 {
 					// word break
 					cur.Pieces = append(cur.Pieces, literalPiece{
