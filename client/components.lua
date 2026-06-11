@@ -513,7 +513,7 @@ local Scroll = makecomp()
 function components.Scroll(id, direction, child)
 	return setmetatable({
 		kind = "scroll",
-		props = { ID = id, Direction = direction, Step = 8 },
+		props = { ID = id, Direction = direction, Step = 32 },
 		children = { child },
 	}, { __index = Scroll })
 end

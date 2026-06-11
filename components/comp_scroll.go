@@ -17,7 +17,7 @@ func init() {
 }
 
 func MkScroll(id string, direction Direction, child Native) Scroll {
-	return Scroll{ID: id, Direction: direction, Child: child, Step: 8}
+	return Scroll{ID: id, Direction: direction, Child: child, Step: 32}
 }
 
 type scrollCtx struct {
