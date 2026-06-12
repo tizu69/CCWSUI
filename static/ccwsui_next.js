@@ -2,6 +2,7 @@ const isDevtoolsShortcut = (e) =>
 	e.key === "F12" ||
 	(e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "i") ||
 	(e.metaKey && e.altKey && e.key.toLowerCase() === "i");
+const security = window.location.protocol === "https:" ? "s" : "";
 
 window.ccwsui = {
 	scale: 3,
@@ -11,10 +12,10 @@ window.ccwsui = {
 
 	socketURL:
 		// AIR seems not support WebSocket, so we use the "real" port for it.
-		`ws://${window.location.hostname}:${window.location.port == 8081 ? 8080 : window.location.port}` +
+		`ws${security}://${window.location.hostname}:${window.location.port == 8081 ? 8080 : window.location.port}` +
 		document.getElementById("ccwsui-socketurl").textContent,
 	validateSocketURL:
-		`http://${window.location.hostname}:${window.location.port}` +
+		`http${security}://${window.location.hostname}:${window.location.port}` +
 		document.getElementById("ccwsui-socketurl").textContent +
 		"/validate",
 
