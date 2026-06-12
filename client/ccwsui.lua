@@ -64,7 +64,7 @@ function CCWSUI:run()
 		elseif jmsg == nil then
 			self.error = "Connection closed"
 			self:reconnect()
-		else
+		elseif jmsg ~= "" then -- keepalive
 			self.retryDelay = 0
 			local msg = textutils.unserializeJSON(jmsg)
 			if msg.t == 4 then -- Ready

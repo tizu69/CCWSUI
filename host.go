@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/coder/websocket"
 	gonanoid "github.com/matoous/go-nanoid/v2"
@@ -27,6 +29,17 @@ func (app *CCWSUI) handleHost(w http.ResponseWriter, r *http.Request) error {
 				c.Close()
 			}
 			app.roomsmu.Unlock()
+		}
+	}()
+
+	go func() {
+		for {
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+			if err := conn.Write(ctx, websocket.MessageText, []byte{}); err != nil {
+				return
+			}
+			time.Sleep(20 * time.Second)
 		}
 	}()
 

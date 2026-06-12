@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"time"
 
 	"g.tizu.dev/CCWSUI/components"
 	"g.tizu.dev/CCWSUI/web/webmsg"
@@ -74,6 +75,17 @@ func (app *CCWSUI) handleRoomService(w http.ResponseWriter, r *http.Request) err
 		return err
 	}
 	defer conn.CloseNow()
+
+	go func() {
+		for {
+			ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+			defer cancel()
+			if err := conn.Write(ctx, websocket.MessageText, []byte{}); err != nil {
+				return
+			}
+			time.Sleep(20 * time.Second)
+		}
+	}()
 
 	userid, err := uuid.Parse(r.URL.Query().Get("user"))
 	if err != nil {

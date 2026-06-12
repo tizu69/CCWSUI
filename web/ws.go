@@ -22,6 +22,10 @@ func (j *jsapi) startReceiveLoop() {
 			return
 		}
 
+		if len(msg) == 0 {
+			continue // ping
+		}
+
 		var e webmsg.Envelope
 		if err := json.Unmarshal(msg, &e); err != nil {
 			slog.Error("Failed to unmarshal message", "err", err)
