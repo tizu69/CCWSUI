@@ -1,4 +1,4 @@
-local CCWSUI = require("ccwsui").new("testing")
+local CCWSUI = require("ccwsui").new("testing", "ws://localhost:8080")
 local c = require("components")
 local cc = require("compoundcomponents")
 

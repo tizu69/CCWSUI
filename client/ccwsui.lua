@@ -9,7 +9,7 @@ local expect = require "cc.expect"
 --- @field textures table<string, string> A table of texture IDs to base64 encoded images.
 --- @field private users table<string, string>
 --- @field private state table<string, CCWSUI.StateProxy>
---- @field package handlers table<string, table<string, CCWSUI.Handler>>
+--- @field package handlers table<string, table<string, {handler: CCWSUI.Handler; timeout: number}>>
 --- @field private ws table The WebSocket connection to the backend.
 --- @field render fun(self: CCWSUI, ctx: CCWSUI.Context): CCWSUI.Component A function that renders the UI.
 --- @field hello fun(self: CCWSUI, client: string, user: string) Gets called when a new client connects.
@@ -88,7 +88,7 @@ function CCWSUI:run()
 				self:handle(msg.d.client, msg.d.event, msg.d.data)
 				os.queueEvent("ccwsui:event", msg.d.client, msg.d.event, msg.d.data)
 				if self.handlers[msg.d.client] and self.handlers[msg.d.client][msg.d.event] then
-					self.handlers[msg.d.client][msg.d.event](msg.d.data)
+					self.handlers[msg.d.client][msg.d.event].handler(msg.d.data)
 				end
 			else
 				self.error = "Got unknown message type: " .. msg.t
@@ -207,7 +207,7 @@ end
 function Context:addHandler(event, handler)
 	local h = self.inst.handlers[self.client]
 	if h[event] then error("Handler already exists for event " .. event) end
-	h[event] = handler
+	h[event] = { handler = handler }
 end
 
 --- Returns a State proxy for the given key. As long as this method is called
@@ -239,7 +239,11 @@ function CCWSUI:forceRender(client)
 		state._listeners[client] = nil
 	end
 	self.rerendering = true
-	self.handlers[client] = {}
+	self.handlers[client] = self.handlers[client] or {}
+	for id, handler in pairs(self.handlers[client]) do
+		if not handler.timeout then handler.timeout = os.time() + 5 end
+		if handler.timeout <= os.time() then self.handlers[client][id] = nil end
+	end
 	local root = self:render(contextFrom(self, client))
 	self.rerendering = false
 	self.ws.send(textutils.serializeJSON({
