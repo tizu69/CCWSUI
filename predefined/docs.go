@@ -33,17 +33,19 @@ type docsUser struct {
 }
 
 type Docs struct {
-	Updater     Updater
-	clientpages map[uuid.UUID]string
-	clientuser  map[uuid.UUID]uuid.UUID
-	users       map[uuid.UUID]docsUser
+	Updater       Updater
+	clientpages   map[uuid.UUID]string
+	clientsidebar map[uuid.UUID]bool
+	clientuser    map[uuid.UUID]uuid.UUID
+	users         map[uuid.UUID]docsUser
 }
 
 func NewDocs() *Docs {
 	return &Docs{
-		clientpages: make(map[uuid.UUID]string),
-		clientuser:  make(map[uuid.UUID]uuid.UUID),
-		users:       make(map[uuid.UUID]docsUser),
+		clientpages:   make(map[uuid.UUID]string),
+		clientsidebar: make(map[uuid.UUID]bool),
+		clientuser:    make(map[uuid.UUID]uuid.UUID),
+		users:         make(map[uuid.UUID]docsUser),
 	}
 }
 
@@ -52,7 +54,11 @@ func (h *Docs) Event(client uuid.UUID, id string, event json.RawMessage) {
 	case strings.HasPrefix(id, "page:"):
 		h.clientpages[client] = id[5:]
 		h.users[h.clientuser[client]] = docsUser{Page: id[5:], Time: time.Now()}
-		h.Updater.Update(client, h.buildUI(h.clientpages[client]))
+		delete(h.clientsidebar, client)
+		h.Updater.Update(client, h.buildUI(h.clientpages[client], false))
+	case id == "menu":
+		h.clientsidebar[client] = true
+		h.Updater.Update(client, h.buildUI(h.clientpages[client], true))
 	}
 }
 
@@ -63,10 +69,10 @@ func (h *Docs) Hello(client uuid.UUID, user uuid.UUID) {
 		h.clientpages[client] = u.Page
 	}
 	h.users[h.clientuser[client]] = docsUser{Page: h.clientpages[client], Time: time.Now()}
-	h.Updater.Update(client, h.buildUI(h.clientpages[client]))
+	h.Updater.Update(client, h.buildUI(h.clientpages[client], false))
 }
 
-func (h *Docs) buildUI(page string) components.Native {
+func (h *Docs) buildUI(page string, sidebaropen bool) components.Native {
 	contents, _ := docsFS.ReadFile("docs/" + page + ".md")
 	if contents == nil {
 		contents = []byte("Page not found: " + page)
@@ -127,27 +133,45 @@ func (h *Docs) buildUI(page string) components.Native {
 		}
 	}
 
-	return components.MkStackH(
-		components.MkTexture("#202020",
-			components.MkPadding(12, 8, 12, 16,
-				components.MkStackV(
-					append([]components.Native{
-						components.MkLiteral("CCWSUI").
-							WithText(" Docs").WithHexColor("#aaa"),
-						components.MkFiller(0, 8),
-					}, pages...)...,
-				).WithGap(2),
-			),
+	sidebar := components.MkTexture("#202020",
+		components.MkPadding(12, 8, 12, 16,
+			components.MkStackV(
+				append([]components.Native{
+					components.MkLiteral("CCWSUI").
+						WithText(" Docs").WithHexColor("#aaa"),
+					components.MkFiller(0, 8),
+				}, pages...)...,
+			).WithGap(2),
 		),
+	)
+	if sidebaropen {
+		return sidebar
+	}
+
+	return components.MkStackH(
+		components.MkMediaQuery(sidebar).WithMinWidth(400),
 
 		components.MkExpandH(
-			components.MkAlignX(components.AlignmentCenter,
-				components.MkScroll("page:"+page, components.DirectionV,
-					components.MkPadding(24, 8, 24, 8,
-						components.MkConstrain(300, 0,
-							components.MkOverlay(components.MkFiller(300, 0), doc),
+			components.MkOverlay(
+				components.MkAlignX(components.AlignmentCenter,
+					components.MkScroll("page:"+page, components.DirectionV,
+						components.MkPadding(24, 8, 24, 8,
+							components.MkConstrain(300, 0,
+								components.MkOverlay(components.MkFiller(300, 0), doc),
+							),
 						),
 					),
+				),
+				components.MkAlign(components.AlignmentStart, components.AlignmentStart,
+					components.MkMediaQuery(
+						components.MkClickRegion("menu",
+							components.MkPadding(2, 2, 2, 2,
+								components.MkTexture("#202020;rounded=1",
+									components.MkIcon("rows"),
+								),
+							),
+						),
+					).WithMaxWidth(399),
 				),
 			),
 		),
@@ -174,6 +198,8 @@ func (h *Docs) linkify(l components.Literal, text, color string) components.Lite
 
 func (h *Docs) Leave(client uuid.UUID) {
 	delete(h.clientuser, client)
+	delete(h.clientpages, client)
+	delete(h.clientsidebar, client)
 }
 
 func (h *Docs) SetUpdater(updater Updater) { h.Updater = updater }

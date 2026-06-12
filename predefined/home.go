@@ -2,9 +2,12 @@ package predefined
 
 import (
 	"encoding/json"
+	"runtime/debug"
+	"time"
 
 	"g.tizu.dev/CCWSUI/components"
 	"github.com/google/uuid"
+	"github.com/mergestat/timediff"
 )
 
 type Home struct {
@@ -50,7 +53,6 @@ func (h *Home) buildUI() components.Native {
 							),
 
 							components.MkLiteral("CCWSUI offers a simple, declarative way to build pixel-perfect web UIs from within ComputerCraft.").
-								WithText("foo").WithClickEvent("docs").WithText("bar").
 								WithHexColor("#aaa").WithWrap().WithAlignment(components.AlignmentCenter),
 
 							components.MkAlignX(components.AlignmentCenter,
@@ -73,7 +75,39 @@ func (h *Home) buildUI() components.Native {
 				),
 			),
 		),
+
+		components.MkAlignX(components.AlignmentCenter,
+			components.MkLiteral(buildinfo).WithHexColor("#444"),
+		),
 	)
+}
+
+var buildinfo = "dev"
+
+func init() {
+	bi, ok := debug.ReadBuildInfo()
+	if !ok {
+		return
+	}
+
+	var rev string
+	var committime time.Time
+	var modified bool
+	for _, s := range bi.Settings {
+		switch s.Key {
+		case "vcs.revision":
+			rev = s.Value[:7]
+		case "vcs.time":
+			committime, _ = time.Parse(time.RFC3339, s.Value)
+		case "vcs.modified":
+			modified = s.Value == "true"
+		}
+	}
+
+	if modified {
+		rev += "*"
+	}
+	buildinfo = "build " + rev + " (" + timediff.TimeDiff(committime) + ")"
 }
 
 func (Home) buildExample() components.Native {

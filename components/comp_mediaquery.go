@@ -36,34 +36,32 @@ func (c MediaQuery) WithMaxHeight(maxHeight int) MediaQuery {
 	return c
 }
 
+func (c MediaQuery) Fits(w, h int) (reason string, ok bool) {
+	if c.MinWidth > 0 && w < c.MinWidth {
+		return "minimum width", false
+	}
+	if c.MaxWidth > 0 && w > c.MaxWidth {
+		return "maximum width", false
+	}
+	if c.MinHeight > 0 && h < c.MinHeight {
+		return "minimum height", false
+	}
+	if c.MaxHeight > 0 && h > c.MaxHeight {
+		return "maximum height", false
+	}
+	return "", true
+}
+
 func (c MediaQuery) Measure(ctx MeasureContext, constraint Size) Size {
-	if c.MinWidth > 0 && constraint.W < c.MinWidth {
-		return Size{}
-	}
-	if c.MaxWidth > 0 && constraint.W > c.MaxWidth {
-		return Size{}
-	}
-	if c.MinHeight > 0 && constraint.H < c.MinHeight {
-		return Size{}
-	}
-	if c.MaxHeight > 0 && constraint.H > c.MaxHeight {
+	if _, ok := c.Fits(ctx.GetDimensions()); !ok {
 		return Size{}
 	}
 	return c.Child.Measure(ctx, constraint)
 }
 
 func (c MediaQuery) Layout(ctx LayoutContext, rect Rect) LayoutNode {
-	if c.MinWidth > 0 && rect.W < c.MinWidth {
-		return LayoutNode{Rect: rect, Title: "MediaQuery (min width unmet)"}
-	}
-	if c.MaxWidth > 0 && rect.W > c.MaxWidth {
-		return LayoutNode{Rect: rect, Title: "MediaQuery (max width unmet)"}
-	}
-	if c.MinHeight > 0 && rect.H < c.MinHeight {
-		return LayoutNode{Rect: rect, Title: "MediaQuery (min height unmet)"}
-	}
-	if c.MaxHeight > 0 && rect.H > c.MaxHeight {
-		return LayoutNode{Rect: rect, Title: "MediaQuery (max height unmet)"}
+	if reason, ok := c.Fits(ctx.GetDimensions()); !ok {
+		return LayoutNode{Rect: rect, Title: "MediaQuery (unmet " + reason + ")"}
 	}
 	return LayoutNode{
 		Rect: rect, Children: []LayoutNode{c.Child.Layout(ctx, rect)},
@@ -72,16 +70,7 @@ func (c MediaQuery) Layout(ctx LayoutContext, rect Rect) LayoutNode {
 }
 
 func (c MediaQuery) Render(ctx RenderContext, layout LayoutNode) {
-	if c.MinWidth > 0 && layout.Rect.W < c.MinWidth {
-		return
-	}
-	if c.MaxWidth > 0 && layout.Rect.W > c.MaxWidth {
-		return
-	}
-	if c.MinHeight > 0 && layout.Rect.H < c.MinHeight {
-		return
-	}
-	if c.MaxHeight > 0 && layout.Rect.H > c.MaxHeight {
+	if _, ok := c.Fits(ctx.GetDimensions()); !ok {
 		return
 	}
 	c.Child.Render(ctx, layout.Children[0])

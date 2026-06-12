@@ -30,7 +30,7 @@ CCWSUI.__index = CCWSUI
 --- @return CCWSUI
 function CCWSUI.new(wantedslug, backend)
 	expect(1, backend, "string", "nil")
-	backend = backend or "ws://localhost:8080"
+	backend = backend or "ws://ccwsui.tizu.dev"
 	local ws, err = http.websocket(backend .. "/host")
 	if not ws then error(err, 2) end
 	if wantedslug then

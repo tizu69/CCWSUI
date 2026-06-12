@@ -57,6 +57,7 @@ type MeasureContext interface {
 	GetLineHeight() int
 	GetTexSize(path string) (x, y int)
 	GetTexBorders(path string) (t, l, b, r int)
+	GetDimensions() (w, h int)
 }
 
 type interactivityContext interface {
