@@ -92,21 +92,15 @@ func init() {
 
 	var rev string
 	var committime time.Time
-	var modified bool
 	for _, s := range bi.Settings {
 		switch s.Key {
 		case "vcs.revision":
 			rev = s.Value[:7]
 		case "vcs.time":
 			committime, _ = time.Parse(time.RFC3339, s.Value)
-		case "vcs.modified":
-			modified = s.Value == "true"
 		}
 	}
 
-	if modified {
-		rev += "*"
-	}
 	buildinfo = "build " + rev + " (" + timediff.TimeDiff(committime) + ")"
 }
 
