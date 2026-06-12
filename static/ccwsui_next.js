@@ -73,14 +73,18 @@ window.ccwsui = {
 		if (storedUser) this.user = storedUser;
 		else localStorage.setItem("ccwsui-user", this.user);
 
-		this.canvas.width = window.innerWidth;
-		this.canvas.height = window.innerHeight;
+		const adjustScreenSize = () => {
+			const dpr = window.devicePixelRatio || 1;
+			this.canvas.width = window.innerWidth * dpr;
+			this.canvas.height = window.innerHeight * dpr;
+			this.canvas.style.width = window.innerWidth + "px";
+			this.canvas.style.height = window.innerHeight + "px";
+		};
+		adjustScreenSize();
 
 		window.addEventListener("resize", () => {
-			this.canvas.width = window.innerWidth;
-			this.canvas.height = window.innerHeight;
-			this.ctx = this.canvas.getContext("2d");
-			this.queueRerender("Resized");
+			adjustScreenSize();
+			this.queueRerender("Window resized");
 		});
 		window.addEventListener("keydown", (e) => {
 			this.keysDown.add(e.key);
@@ -158,9 +162,10 @@ window.ccwsui = {
 	},
 
 	getDimensions() {
+		const dpr = window.devicePixelRatio || 1;
 		return {
-			w: Math.floor(this.canvas.width / this.scale),
-			h: Math.floor(this.canvas.height / this.scale),
+			w: Math.floor(this.canvas.width / this.scale / dpr),
+			h: Math.floor(this.canvas.height / this.scale / dpr),
 		};
 	},
 	getMousePos() {
@@ -206,8 +211,9 @@ window.ccwsui = {
 	},
 	isRectVisible(x, y, w, h) {
 		if (w <= 0 || h <= 0) return false;
-		const maxW = Math.floor(this.canvas.width / this.scale);
-		const maxH = Math.floor(this.canvas.height / this.scale);
+		const dpr = window.devicePixelRatio || 1;
+		const maxW = Math.floor(this.canvas.width / this.scale / dpr);
+		const maxH = Math.floor(this.canvas.height / this.scale / dpr);
 		if (x >= maxW || y >= maxH || x + w <= 0 || y + h <= 0) return false;
 		for (const scissor of this.scissorStack)
 			if (
@@ -223,12 +229,14 @@ window.ccwsui = {
 		const ctx = this.canvasContext;
 		ctx.fillStyle = color;
 		ctx.font = this.scaled(this.fontsize) + "px CCWSUI";
+		ctx.imageSmoothingEnabled = false;
 		ctx.fillText(text, this.scaled(x), this.scaled(y + this.baseline));
 	},
 	guessTextWidth(text) {
 		const ctx = this.canvasContext;
 		ctx.font = this.scaled(this.fontsize) + "px CCWSUI";
-		const v = Math.round(ctx.measureText(text).width) / this.scale;
+		const dpr = window.devicePixelRatio || 1;
+		const v = Math.round(ctx.measureText(text).width) / this.scale / dpr;
 		if (v % 1 !== 0) console.warn("Text width is not integer!", v, text);
 		return v;
 	},
@@ -495,7 +503,8 @@ window.ccwsui = {
 		if (!img) return;
 		ctx.imageSmoothingEnabled = false;
 
-		const cacheKey = `${path}:${sx}:${sy}:${sw}:${sh}:${this.scale}`;
+		const dpr = window.devicePixelRatio || 1;
+		const cacheKey = `${path}:${sx}:${sy}:${sw}:${sh}:${this.scale}:${dpr}`;
 		if (this.renderTexPatternCache[cacheKey]) {
 			const pattern = this.renderTexPatternCache[cacheKey];
 			pattern.setTransform(
@@ -543,7 +552,8 @@ window.ccwsui = {
 		return this.ctx || this.canvas.getContext("2d");
 	},
 	scaled(v) {
-		return Math.round(v) * this.scale;
+		const dpr = window.devicePixelRatio || 1;
+		return Math.round(v) * this.scale * dpr;
 	},
 
 	devtoolsWindow: null,
