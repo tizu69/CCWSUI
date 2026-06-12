@@ -50,6 +50,7 @@ func (app *CCWSUI) handleHost(w http.ResponseWriter, r *http.Request) error {
 		}
 
 		var env HostEnvelope
+		time.Sleep(time.Duration(app.latency) * time.Millisecond)
 		if err := json.Unmarshal(b, &env); err != nil {
 			conn.Close(websocket.StatusUnsupportedData, "Bad JSON")
 			return err

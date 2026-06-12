@@ -105,6 +105,7 @@ func (app *CCWSUI) handleRoomService(w http.ResponseWriter, r *http.Request) err
 		}
 
 		var e webmsg.Envelope
+		time.Sleep(time.Duration(app.latency) * time.Millisecond)
 		if err := json.Unmarshal(msg, &e); err != nil {
 			return err
 		}

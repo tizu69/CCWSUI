@@ -19,6 +19,7 @@
 	height: 100dvh;
 	display: flex;
 	touch-action: none;
+	image-rendering: pixelated;
 }
 
 .ccwsui-layout-tree-overlay {

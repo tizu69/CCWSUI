@@ -3,6 +3,7 @@ package main
 import (
 	"log/slog"
 	"os"
+	"strconv"
 	"sync"
 
 	"g.tizu.dev/CCWSUI/predefined"
@@ -11,7 +12,8 @@ import (
 )
 
 type CCWSUI struct {
-	addr string
+	addr    string
+	latency int
 
 	rooms   map[string]*Room
 	roomsmu sync.RWMutex
@@ -39,9 +41,17 @@ func main() {
 		addr = ":8080"
 	}
 
+	latency, _ := strconv.Atoi(os.Getenv("CCWSUI_LATENCY"))
+	latency /= 2
+	if latency > 0 {
+		slog.Warn("Debug network latency is enabled!",
+			"latency", strconv.Itoa(latency*2)+"ms")
+	}
+
 	app := CCWSUI{
-		addr:  addr,
-		rooms: make(map[string]*Room),
+		addr:    addr,
+		rooms:   make(map[string]*Room),
+		latency: latency,
 	}
 
 	app.rooms["home"] = NewPredefinedRoom(predefined.NewHome(), "home")
