@@ -112,7 +112,11 @@ func (app *CCWSUI) handleHostMsg(room *Room, env HostEnvelope) error {
 		if err := json.Unmarshal(env.Data, &data); err != nil {
 			return err
 		}
-		room.textures[data.ID] = data.Data
+		b, err := stripColorProfile(data.Data)
+		if err != nil {
+			return err
+		}
+		room.textures[data.ID] = b
 		return nil
 
 	case HostMsgFreeze:

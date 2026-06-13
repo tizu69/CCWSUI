@@ -155,28 +155,6 @@ func (r *Room) Redirect(client uuid.UUID, url string) {
 	}
 }
 
-var coreTextures = map[string][]byte{}
-
-func init() {
-	tex, _ := staticFS.ReadDir("static/tex")
-	for _, tex := range tex {
-		data, err := staticFS.ReadFile("static/tex/" + tex.Name())
-		if err != nil {
-			panic(err)
-		}
-		coreTextures[tex.Name()[:len(tex.Name())-4]] = data
-	}
-
-	icons, _ := staticFS.ReadDir("static/icon")
-	for _, icon := range icons {
-		data, err := staticFS.ReadFile("static/icon/" + icon.Name())
-		if err != nil {
-			panic(err)
-		}
-		coreTextures["@icon/"+icon.Name()[:len(icon.Name())-4]] = data
-	}
-}
-
 func (r *Room) sendUpdate(conn *websocket.Conn) error {
 	for id, data := range coreTextures {
 		if err := webmsg.SendMsg(conn, webmsg.TypeTexture, webmsg.Texture{ID: id, Data: data}); err != nil {
