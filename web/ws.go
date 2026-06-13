@@ -63,6 +63,8 @@ func (j *jsapi) startReceiveLoop() {
 				continue
 			}
 			j.wrap.Get("userTextures").Set(t.ID, base64.StdEncoding.EncodeToString(t.Data))
+			j.wrap.Set("textures", map[string]any{})
+			j.wrap.Set("textureBorders", map[string]any{})
 			j.TotalRerender("Server-sent Texture Update")
 
 		case webmsg.TypeRedirect:

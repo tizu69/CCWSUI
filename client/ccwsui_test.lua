@@ -17,11 +17,13 @@ local function line(ctx)
 		end)
 end
 
-function CCWSUI:render(ctx)
-	CCWSUI:updateMetadata(ctx.client) {
+function CCWSUI:hello(client, user)
+	CCWSUI:updateMetadata(client) {
 		title = "Testing"
 	}
+end
 
+function CCWSUI:render(ctx)
 	return c.Texture("backdrop", c.StackV()
 		:add(
 			line(ctx)
