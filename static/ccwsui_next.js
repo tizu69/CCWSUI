@@ -299,18 +299,11 @@ window.ccwsui = {
 					return Promise.resolve();
 				}
 
-				const img = new Image();
-				if (path in this.userTextures)
-					img.src = `data:image/png;base64,${this.userTextures[path]}`;
-				else if (path.startsWith("@item/")) {
-					img.src = `/static/item/${path.slice(6)}.png`;
-					flags = {}; // TODO: do we want items to be processed?
-				} else img.src = `/static/unknown.png`;
-
 				const canvas = document.createElement("canvas");
 				this.textures[p] = canvas;
 				return new Promise((resolve) => {
-					img.onload = () => {
+					const img = document.createElement("canvas");
+					const callback = () => {
 						canvas.width = p.startsWith("@item/")
 							? img.width // icons don't need a sidecar texture
 							: img.width / 2;
@@ -463,10 +456,26 @@ window.ccwsui = {
 
 						resolve();
 					};
-					img.onerror = () => {
-						console.error(`Failed to load texture: ${p}`);
-						resolve();
-					};
+
+					const badcallback = () =>
+						PNG.load(`/static/unknown.png`, img, callback, resolve);
+					if (path in this.userTextures)
+						PNG.load(
+							`data:image/png;base64,${this.userTextures[path]}`,
+							img,
+							callback,
+							badcallback,
+						);
+					else if (path.startsWith("@item/")) {
+						PNG.load(
+							`/static/item/${path.slice(6)}.png`,
+							img,
+							callback,
+							badcallback,
+						);
+						flags = {}; // TODO: do we want items to be processed?
+					} else
+						PNG.load(`/static/unknown.png`, img, callback, resolve);
 				});
 			}),
 		);
