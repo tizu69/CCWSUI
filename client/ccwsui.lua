@@ -30,7 +30,7 @@ CCWSUI.__index = CCWSUI
 --- @return CCWSUI
 function CCWSUI.new(wantedslug, backend)
 	expect(1, backend, "string", "nil")
-	backend = backend or "ws://ccwsui.tizu.dev"
+	backend = backend or "wss://ccwsui.tizu.dev"
 	local ws, err = http.websocket(backend .. "/host")
 	if not ws then error(err, 2) end
 	if wantedslug then
@@ -57,8 +57,11 @@ function CCWSUI:run()
 	self.retryDelay = 0
 	self.ws.send(textutils.serializeJSON({ t = 3 })) -- freeze
 	while true do
-		local jmsg, err = self.ws.receive()
-		if err then
+		local pcallok, jmsg, err = pcall(self.ws.receive)
+		if not pcallok then
+			self.error = jmsg
+			return
+		elseif err then
 			self.error = err
 			return
 		elseif jmsg == nil then
