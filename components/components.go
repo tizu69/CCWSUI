@@ -17,8 +17,6 @@ var rootTemplate, _ = template.New("root").Parse(`
 	<link rel="icon" href="/static/favicon.png">
 	<link rel="stylesheet" href="/static/ccwsui.css">
 	<script src="/static/ccwsui_next.js" defer></script>
-	<script src="/static/zlib.js"></script>
-	<script src="/static/png.js"></script>
 	<script id="ccwsui-socketurl" type="text/plain">{{.SocketURL}}</script>
 </head>
 <body>
