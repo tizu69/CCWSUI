@@ -6,6 +6,7 @@ import (
 )
 
 type WireNode struct {
+	ID       string          `json:"id,omitempty"`
 	Kind     string          `json:"kind"`
 	Props    json.RawMessage `json:"props,omitempty"`
 	Children []WireNode      `json:"children,omitempty"`

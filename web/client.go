@@ -13,6 +13,7 @@ import (
 type jsapi struct {
 	wrap             js.Value
 	Root             components.Native
+	wireRoot         *components.WireNode
 	DevTools         bool
 	requiredTextures []string
 	overlays         []func()

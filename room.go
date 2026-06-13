@@ -171,12 +171,28 @@ func (r *Room) sendUpdate(conn *websocket.Conn) error {
 }
 
 type roomClient struct {
-	conn   *websocket.Conn
-	UserID uuid.UUID
+	conn     *websocket.Conn
+	UserID   uuid.UUID
+	wireTree *components.WireNode
+	wireMu   sync.Mutex
 }
 
 func (c *roomClient) Update(root components.WireNode) error {
-	return webmsg.SendMsg(c.conn, webmsg.TypeUpdate, webmsg.Update{Root: root})
+	c.wireMu.Lock()
+	oldTree := c.wireTree
+	assignIDs(&root, "")
+	c.wireTree = &root
+	c.wireMu.Unlock()
+
+	if oldTree == nil {
+		return webmsg.SendMsg(c.conn, webmsg.TypeUpdate, webmsg.Update{Root: root})
+	}
+
+	patches := diffTrees(oldTree, &root)
+	if len(patches) == 0 {
+		return nil
+	}
+	return webmsg.SendMsg(c.conn, webmsg.TypePatch, webmsg.Patch{Patches: patches})
 }
 
 func (c *roomClient) UpdateMetadata(d HostMetadataPayload) error {

@@ -16,6 +16,7 @@ const (
 	TypeEvent
 	TypeMetadata
 	TypeRedirect
+	TypePatch
 )
 
 type Envelope struct {
@@ -43,6 +44,26 @@ type Metadata struct {
 
 type Redirect struct {
 	URL string `json:"url"`
+}
+
+type PatchOp string
+
+const (
+	PatchSetProps PatchOp = "setprops"
+	PatchReplace  PatchOp = "replace"
+	PatchRemove   PatchOp = "remove"
+	PatchInsert   PatchOp = "insert"
+)
+
+type PatchEntry struct {
+	Action PatchOp              `json:"action"`
+	Path   string               `json:"path"`
+	Props  json.RawMessage      `json:"props,omitempty"`
+	Node   *components.WireNode `json:"node,omitempty"`
+}
+
+type Patch struct {
+	Patches []PatchEntry `json:"patches"`
 }
 
 func SendMsg(conn *websocket.Conn, typ Type, payload any) error {

@@ -40,6 +40,7 @@ func (j *jsapi) startReceiveLoop() {
 				slog.Error("Failed to unmarshal update", "err", err)
 				continue
 			}
+			j.wireRoot = &u.Root
 			newroot, err := components.FromWire(u.Root)
 			if err != nil {
 				slog.Error("Failed to unmarshal root", "err", err)
@@ -47,6 +48,23 @@ func (j *jsapi) startReceiveLoop() {
 			}
 			j.Root = newroot
 			j.TotalRerender("Server-sent Tree Update")
+
+		case webmsg.TypePatch:
+			var p webmsg.Patch
+			if err := json.Unmarshal(e.Data, &p); err != nil {
+				slog.Error("Failed to unmarshal patch", "err", err)
+				continue
+			}
+			if j.wireRoot != nil {
+				applyPatches(j.wireRoot, p.Patches)
+				newroot, err := components.FromWire(*j.wireRoot)
+				if err != nil {
+					slog.Error("Failed to deserialize patch result", "err", err)
+					continue
+				}
+				j.Root = newroot
+				j.TotalRerender("Server-sent Patch Update")
+			}
 
 		case webmsg.TypeMetadata:
 			var d webmsg.Metadata
@@ -99,6 +117,7 @@ func (j *jsapi) run() {
 	j.wrap.Call("setConnectionStatus", "connecting")
 	for {
 		j.Root = nil
+		j.wireRoot = nil
 		j.context = make(map[string]any)
 		j.texBordersCache = make(map[string][4]int)
 
