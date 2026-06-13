@@ -21,6 +21,7 @@ type Room struct {
 	frozen     bool
 	wantedSlug string
 
+	textures  map[string][]byte
 	clients   map[uuid.UUID]*roomClient
 	clientsMu sync.Mutex
 }
@@ -29,15 +30,17 @@ func NewRemoteRoom(hostConn *websocket.Conn) *Room {
 	return &Room{
 		hostConn: hostConn,
 		clients:  make(map[uuid.UUID]*roomClient),
+		textures: make(map[string][]byte),
 	}
 }
 
 func NewPredefinedRoom(predef predefined.Room, slug string) *Room {
 	r := &Room{
-		ID:      slug,
-		predef:  predef,
-		clients: make(map[uuid.UUID]*roomClient),
-		frozen:  true,
+		ID:       slug,
+		predef:   predef,
+		clients:  make(map[uuid.UUID]*roomClient),
+		textures: make(map[string][]byte),
+		frozen:   true,
 	}
 	predef.SetUpdater(r)
 	return r
@@ -152,13 +155,38 @@ func (r *Room) Redirect(client uuid.UUID, url string) {
 	}
 }
 
+var coreTextures = map[string][]byte{}
+
+func init() {
+	tex, _ := staticFS.ReadDir("static/tex")
+	for _, tex := range tex {
+		data, err := staticFS.ReadFile("static/tex/" + tex.Name())
+		if err != nil {
+			panic(err)
+		}
+		coreTextures[tex.Name()[:len(tex.Name())-4]] = data
+	}
+
+	icons, _ := staticFS.ReadDir("static/icon")
+	for _, icon := range icons {
+		data, err := staticFS.ReadFile("static/icon/" + icon.Name())
+		if err != nil {
+			panic(err)
+		}
+		coreTextures["@icon/"+icon.Name()[:len(icon.Name())-4]] = data
+	}
+}
+
 func (r *Room) sendUpdate(conn *websocket.Conn) error {
-	// TODO: host-submitted textures should be sent here
-	if err := webmsg.SendMsg(conn, webmsg.TypeTexture, webmsg.Texture{
-		ID:   "externallyloaded",
-		Data: "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAQAAADYv8WvAAAAAXNSR0IArs4c6QAAABJJREFUCJlj9Pz/kYHpIwM/AwAVIAM98dt1zAAAAABJRU5ErkJggg==",
-	}); err != nil {
-		return err
+	for id, data := range coreTextures {
+		if err := webmsg.SendMsg(conn, webmsg.TypeTexture, webmsg.Texture{ID: id, Data: data}); err != nil {
+			return err
+		}
+	}
+	for id, data := range r.textures {
+		if err := webmsg.SendMsg(conn, webmsg.TypeTexture, webmsg.Texture{ID: id, Data: data}); err != nil {
+			return err
+		}
 	}
 
 	return webmsg.SendMsg(conn, webmsg.TypeUpdate, webmsg.Update{Root: waitingForHost})

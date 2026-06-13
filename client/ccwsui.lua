@@ -111,6 +111,9 @@ function CCWSUI:reconnect()
 			if self.wantedslug then
 				ws.send(textutils.serializeJSON({ t = 2, d = { slug = self.wantedslug } }))
 			end
+			for id, data in pairs(self.textures) do
+				ws.send(textutils.serializeJSON({ t = 9, d = { id = id, data = data } }))
+			end
 			ws.send(textutils.serializeJSON({ t = 3 })) -- freeze
 			self.ws = ws
 			self.error = nil
@@ -246,10 +249,13 @@ function CCWSUI:forceRender(client)
 	end
 	local root = self:render(contextFrom(self, client))
 	self.rerendering = false
-	self.ws.send(textutils.serializeJSON({
-		t = 1, -- Update
-		d = { client = client, root = root }
-	}))
+	self:send(1, { client = client, root = root })
+end
+
+--- @param type number The type of message to send.
+--- @param data any The data to send.
+function CCWSUI:send(type, data)
+	pcall(self.ws.send, textutils.serializeJSON({ t = type, d = data }))
 end
 
 ---@class CCWSUI.Metadata
@@ -262,11 +268,55 @@ end
 --- @return fun(d: CCWSUI.Metadata)
 function CCWSUI:updateMetadata(client)
 	return function(d)
-		self.ws.send(textutils.serializeJSON({
-			t = 8,
-			d = { client = client, title = d.title }
-		}))
+		self:send(8, { client = client, title = d.title })
 	end
+end
+
+local alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+local function b64encode(str)
+	local lookup = {}
+	for i = 1, #alphabet do lookup[i] = string.sub(alphabet, i, i) end
+
+	local len = #str
+	local remainder = len % 3
+	local out = ""
+	for i = 1, len - remainder, 3 do
+		local c1, c2, c3 = string.byte(str, i, i + 2)
+		out = out ..
+			lookup[bit32.rshift(c1, 2) + 1] ..
+			lookup[c1 % 4 * 16 + bit32.rshift(c2, 4) + 1] ..
+			lookup[c2 % 16 * 4 + bit32.rshift(c3, 6) + 1] ..
+			lookup[c3 % 64 + 1]
+	end
+
+	if remainder == 2 then
+		local c1, c2 = string.byte(str, len - 1, len)
+		out = out ..
+			lookup[bit32.rshift(c1, 2) + 1] ..
+			lookup[c1 % 4 * 16 + bit32.rshift(c2, 4) + 1] ..
+			lookup[c2 % 16 * 4 + 1] ..
+			"="
+	elseif remainder == 1 then
+		local c1 = string.byte(str, len)
+		out = out .. lookup[bit32.rshift(c1, 2) + 1] .. lookup[c1 % 4 * 16 + 1] .. "=="
+	end
+
+	return out
+end
+
+--- Uploads a texture for use with components.Texture. The ID must be unique,
+--- a duplicate ID will overwrite the previous texture. An ID may also shadow
+--- built-in texture IDs, if you want to override any of the built-in textures.
+--- Must be called before running `CCWSUI:run()`.
+--- @param id string The ID to use for the texture.
+--- @param path string A path to the .png file.
+function CCWSUI:uploadTexture(id, path)
+	local f = fs.open(path, "rb")
+	if not f then error("File not found: " .. path, 2) end
+	local b64 = b64encode(f.readAll())
+	self.textures[id] = b64
+	self:send(9, { id = id, data = b64 })
+	f.close()
 end
 
 -- default hook implementations

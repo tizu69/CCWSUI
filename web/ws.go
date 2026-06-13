@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -61,7 +62,7 @@ func (j *jsapi) startReceiveLoop() {
 				slog.Error("Failed to unmarshal texture", "err", err)
 				continue
 			}
-			j.wrap.Get("userTextures").Set(t.ID, t.Data)
+			j.wrap.Get("userTextures").Set(t.ID, base64.StdEncoding.EncodeToString(t.Data))
 			j.TotalRerender("Server-sent Texture Update")
 
 		case webmsg.TypeRedirect:

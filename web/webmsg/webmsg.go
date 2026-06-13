@@ -29,7 +29,7 @@ type Update struct {
 
 type Texture struct {
 	ID   string `json:"id"`
-	Data string `json:"data"`
+	Data []byte `json:"data"`
 }
 
 type Event struct {

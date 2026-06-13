@@ -104,6 +104,17 @@ func (app *CCWSUI) handleHostMsg(room *Room, env HostEnvelope) error {
 		room.wantedSlug = data.Slug
 		return nil
 
+	case HostMsgTexture:
+		if room.Frozen() {
+			return fmt.Errorf("room is frozen")
+		}
+		var data HostTexturePayload
+		if err := json.Unmarshal(env.Data, &data); err != nil {
+			return err
+		}
+		room.textures[data.ID] = data.Data
+		return nil
+
 	case HostMsgFreeze:
 		if room.Frozen() {
 			return fmt.Errorf("room already frozen")

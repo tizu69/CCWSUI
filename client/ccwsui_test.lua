@@ -22,7 +22,7 @@ function CCWSUI:render(ctx)
 		title = "Testing"
 	}
 
-	return c.StackV()
+	return c.Texture("backdrop", c.StackV()
 		:add(
 			line(ctx)
 			:wrapAlignCenter()
@@ -60,8 +60,10 @@ function CCWSUI:render(ctx)
 		)
 		:add(line(ctx)
 			:wrapAlignCenter()
-			:wrapExpand())
+			:wrapExpand()))
 end
+
+CCWSUI:uploadTexture("backdrop", "backdrop.png")
 
 parallel.waitForAny(function() CCWSUI:run() end, function()
 	while true do

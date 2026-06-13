@@ -305,9 +305,7 @@ window.ccwsui = {
 				else if (path.startsWith("@item/")) {
 					img.src = `/static/item/${path.slice(6)}.png`;
 					flags = {}; // TODO: do we want items to be processed?
-				} else if (path.startsWith("@icon/"))
-					img.src = `/static/icon/${path.slice(6)}.png`;
-				else img.src = `/static/tex/${path}.png`;
+				} else img.src = `/static/unknown.png`;
 
 				const canvas = document.createElement("canvas");
 				this.textures[p] = canvas;

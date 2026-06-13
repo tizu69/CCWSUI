@@ -20,6 +20,7 @@ const (
 	HostMsgLeave
 	HostMsgEvent
 	HostMsgMetadata
+	HostMsgTexture
 )
 
 // Host to Server
@@ -36,6 +37,11 @@ type HostMetadataPayload struct {
 
 type HostWantSlugPayload struct {
 	Slug string `json:"slug"`
+}
+
+type HostTexturePayload struct {
+	ID   string `json:"id"`
+	Data []byte `json:"data"`
 }
 
 // Server to Host
